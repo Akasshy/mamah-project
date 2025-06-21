@@ -1,237 +1,563 @@
 import 'package:flutter/material.dart';
 import 'package:health_app/app_colors.dart';
+import 'package:flutter/services.dart';
+import 'package:health_app/ip_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EdukasiPage extends StatefulWidget {
-  const EdukasiPage({Key? key}) : super(key: key); // Added Key? key
+  const EdukasiPage({Key? key}) : super(key: key);
 
   @override
   State<EdukasiPage> createState() => _EdukasiPageState();
 }
 
 class _EdukasiPageState extends State<EdukasiPage> {
-  final List<bool> _isHoveringHorizontal = List.generate(
-    _articles.length,
-    (index) => false,
-  );
-  final List<bool> _isHoveringVertical = List.generate(
-    _articles.length,
-    (index) => false,
-  );
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  List<Article> _articles = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchArticles();
+  }
+
+  Future<void> _fetchArticles() async {
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = 'Token tidak ditemukan. Harap login ulang.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/education'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (!mounted) return;
+        setState(() {
+          _articles = (data['data'] as List)
+              .map(
+                (item) => Article(
+                  id: item['id'].toString(),
+                  title: item['title'],
+                  imageUrl: item['image_url'] ?? 'https://picsum.photos/200',
+                  postedOn: item['created_at'],
+                  content: '',
+                ),
+              )
+              .toList();
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = 'Gagal memuat data: ${response.statusCode}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background, // Wrap with Scaffold
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: Container(
-          color: Colors.white,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    // Text di kiri
-                    const Text(
-                      'Edukasi',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Colors.black,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(80),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Edukasi Kesehatan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-
-                    // Profil kanan
-                  ],
+                      const Spacer(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Artikel Pilihan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: _articles.length,
-                itemBuilder: (context, index) {
-                  final article = _articles[index];
-                  return MouseRegion(
-                    onEnter: (event) => _onEnteredHorizontal(true, index),
-                    onExit: (event) => _onEnteredHorizontal(false, index),
-                    child: SizedBox(
-                      width: 150,
-                      child: Card(
-                        color: _isHoveringHorizontal[index]
-                            ? AppColors.inputFill
-                            : AppColors.background,
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    DetailEdukasiPage(article: article),
+        body: _isLoading
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.buttonBackground,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Memuat artikel...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              )
+            : _errorMessage.isNotEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red[400],
+                        size: 50,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.buttonBackground,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        onPressed: _fetchArticles,
+                        child: const Text(
+                          'Coba Lagi',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Artikel Pilihan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 220,
+                      child: FutureBuilder<List<Article>>(
+                        future: _fetchLatestArticle(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.buttonBackground,
+                                ),
                               ),
                             );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Expanded(
-                                  child: Image.network(
-                                    article.imageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.error),
-                                  ),
+                          } else if (snapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error: ${snapshot.error}',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          } else if (!snapshot.hasData ||
+                              snapshot.data!.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'Tidak ada artikel terbaru',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          } else {
+                            final latestArticle = snapshot.data!.first;
+                            return GestureDetector(
+                              onTap: () {
+                                _navigateToDetail(context, latestArticle);
+                              },
+                              child: Card(
+                                color: AppColors.inputFill,
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    article.title,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                clipBehavior: Clip.antiAlias,
+                                child: Stack(
+                                  children: [
+                                    Image.network(
+                                      latestArticle.imageUrl,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                color: AppColors.inputFill,
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.image,
+                                                    color: Colors.green,
+                                                    size: 50,
+                                                  ),
+                                                ),
+                                              ),
                                     ),
-                                    textAlign: TextAlign.start,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.bottomCenter,
+                                            end: Alignment.topCenter,
+                                            colors: [
+                                              Colors.black.withOpacity(0.8),
+                                              Colors.transparent,
+                                            ],
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              latestArticle.title,
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Terbit: ${latestArticle.postedOn}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[300],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.buttonBackground
+                                              .withOpacity(0.9),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'TERBARU',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Semua Artikel',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 8),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _articles.length,
+                      itemBuilder: (context, index) {
+                        final article = _articles[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.white,
+                            // boxShadow: [
+                            //   BoxShadow(
+                            //     color: Colors.grey.withOpacity(0.1),
+                            //     spreadRadius: 2,
+                            //     blurRadius: 5,
+                            //     offset: const Offset(0, 2),
+                            //   ),
+                            // ],
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              _navigateToDetail(context, article);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      width: 90,
+                                      height: 90,
+                                      color: AppColors.inputFill,
+                                      child: Image.network(
+                                        article.imageUrl,
+                                        width: 90,
+                                        height: 90,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Center(
+                                                  child: Icon(
+                                                    Icons.image,
+                                                    size: 40,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          article.title,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              size: 14,
+                                              color: Colors.grey[500],
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Terbit: ${article.postedOn}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.buttonBackground
+                                                .withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Baca Artikel',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.buttonBackground,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Semua Artikel',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Column(
-              children: _articles.map((item) {
-                final index = _articles.indexOf(item);
-                return MouseRegion(
-                  onEnter: (event) => _onEnteredVertical(true, index),
-                  onExit: (event) => _onEnteredVertical(false, index),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              DetailEdukasiPage(article: item),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _isHoveringVertical[index]
-                            ? AppColors.inputFill
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${item.author} • ${item.postedOn}',
-                                  style: const TextStyle(color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.network(
-                              item.imageUrl,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.error),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  void _onEnteredHorizontal(bool isHovering, int index) {
-    setState(() {
-      _isHoveringHorizontal[index] = isHovering;
-    });
+  Future<List<Article>> _fetchLatestArticle() async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Token tidak ditemukan.');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/education/latest'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['data'] != null) {
+          return [
+            Article(
+              id: data['data']['id'].toString(),
+              title: data['data']['title'],
+              imageUrl:
+                  data['data']['image_url'] ?? 'https://picsum.photos/200',
+              postedOn: data['data']['created_at'],
+              content: data['data']['content'] ?? '',
+            ),
+          ];
+        }
+        return [];
+      } else {
+        throw Exception('Gagal memuat artikel terbaru: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Kesalahan: $e');
+    }
   }
 
-  void _onEnteredVertical(bool isHovering, int index) {
-    setState(() {
-      _isHoveringVertical[index] = isHovering;
-    });
+  Future<void> _navigateToDetail(BuildContext context, Article article) async {
+    if (article.content.isEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+
+        if (token == null) {
+          article.content = 'Token tidak ditemukan. Harap login ulang.';
+        } else {
+          final response = await http.get(
+            Uri.parse('$baseUrl/api/education/${article.id}/show'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Accept': 'application/json',
+            },
+          );
+
+          if (response.statusCode == 200) {
+            final data = json.decode(response.body);
+            article.content = data['data']['content'] ?? 'Tidak ada konten';
+          } else {
+            article.content =
+                'Gagal memuat konten: Status ${response.statusCode}';
+          }
+        }
+      } catch (e) {
+        article.content = 'Gagal memuat konten: $e';
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailEdukasiPage(article: article),
+      ),
+    );
   }
 }
 
 class Article {
-  final String title;
-  final String imageUrl;
-  final String author;
-  final String postedOn;
-  final String content;
+  String id;
+  String title;
+  String imageUrl;
+  String postedOn;
+  String content;
 
   Article({
+    required this.id,
     required this.title,
     required this.imageUrl,
-    this.author = 'Unknown Author',
-    this.postedOn = 'Unknown Date',
-    this.content =
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    required this.postedOn,
+    required this.content,
   });
 }
 
@@ -243,75 +569,88 @@ class DetailEdukasiPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(article.title),
+        title: Text(
+          'Detail Artikel',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.network(
-              article.imageUrl,
-              width: double.infinity,
-              height: 200,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.error),
+            Hero(
+              tag: 'article-image-${article.id}',
+              child: ClipRRect(
+                child: Image.network(
+                  article.imageUrl,
+                  width: double.infinity,
+                  height: 250,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 250,
+                    color: Colors.grey[200],
+                    child: Center(
+                      child: Icon(
+                        Icons.image,
+                        size: 60,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              article.title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article.title,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Terbit: ${article.postedOn}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Container(height: 1, color: Colors.grey[200]),
+                  const SizedBox(height: 24),
+                  Text(
+                    article.content,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.grey[800],
+                    ),
+                    textAlign: TextAlign.justify,
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${article.author} • ${article.postedOn}',
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Text(article.content, style: const TextStyle(fontSize: 16)),
           ],
         ),
       ),
     );
   }
 }
-
-final List<Article> _articles = [
-  Article(
-    title: "Instagram quietly limits ‘daily time limit’ option",
-    author: "MacRumors",
-    imageUrl: "https://picsum.photos/id/1000/960/540",
-    postedOn: "Yesterday",
-    content:
-        "Instagram is testing a new feature that allows users to set daily time limits for their usage. This feature is currently being tested with a small group of users.",
-  ),
-  Article(
-    title: "Google Search dark theme goes fully black for some on the web",
-    imageUrl: "https://picsum.photos/id/1010/960/540",
-    author: "9to5Google",
-    postedOn: "4 hours ago",
-    content:
-        "Google is rolling out a new dark theme for its search results page on the web. The new dark theme is fully black, which should be easier on the eyes in low-light conditions.",
-  ),
-  Article(
-    title: "Judul Artikel Panjang Sekali Melebihi Batas",
-    imageUrl: "https://picsum.photos/id/1020/960/540",
-    author: "Tech News",
-    postedOn: "2 days ago",
-    content:
-        "This is a longer article to test how the layout handles longer titles and content. We want to make sure everything looks good no matter how much text there is.",
-  ),
-  Article(
-    title: "Artikel Kelima",
-    imageUrl: "https://picsum.photos/id/1040/960/540",
-    author: "Mobile World",
-    postedOn: "3 weeks ago",
-    content:
-        "The fifth article in our series explores the latest trends in mobile technology. From foldable phones to 5G connectivity, we cover it all.",
-  ),
-];

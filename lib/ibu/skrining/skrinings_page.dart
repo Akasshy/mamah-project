@@ -104,13 +104,6 @@ class _MenuCardState extends State<_MenuCard> {
             decoration: BoxDecoration(
               color: _isHovered ? AppColors.inputFill : AppColors.background,
               borderRadius: BorderRadius.circular(0),
-              // boxShadow: [
-              //   BoxShadow(
-              //     color: Colors.black.withOpacity(0.05),
-              //     blurRadius: 8,
-              //     offset: const Offset(0, 2),
-              //   ),
-              // ],
             ),
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
             child: Row(
@@ -174,15 +167,15 @@ final List<MenuItem> menuItems = [
     page: const QuestionPage(),
   ),
   MenuItem(
-    title: 'Lihat Hasil Skor',
+    title: 'Hasil Skrining',
     icon: Icons.bar_chart_rounded,
     page: const LihatSkor(),
   ),
-  MenuItem(
-    title: 'Rekomendasi',
-    icon: Icons.recommend_rounded,
-    page: const RekomendasiPage(),
-  ),
+  // MenuItem(
+  //   title: 'Rekomendasi',
+  //   icon: Icons.recommend_rounded,
+  //   page: const RekomendasiPage(),
+  // ),
 ];
 
 // Dummy pages

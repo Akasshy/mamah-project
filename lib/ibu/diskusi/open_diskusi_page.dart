@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:health_app/ip_config.dart';
 import 'dart:async';
-import 'dart:math';
-
+// import 'dart:math';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:health_app/app_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart'; // Add this import
 
 class User {
   final String id;
@@ -13,77 +17,28 @@ class User {
 }
 
 class Message {
+  final int id; // Tambahkan ini
   final String text;
   final User sender;
   final DateTime timestamp;
 
-  Message({required this.text, required this.sender, required this.timestamp});
-}
-
-class ChatService {
-  final StreamController<Message> _messageController =
-      StreamController<Message>.broadcast();
-  final StreamController<Set<User>> _typingController =
-      StreamController<Set<User>>.broadcast();
-  final Random _random = Random();
-
-  final List<User> users = [
-    User(id: '1', name: 'You', color: Colors.blue),
-    User(id: '2', name: 'Alice', color: Colors.purple),
-    User(id: '3', name: 'Bob', color: Colors.green),
-    User(id: '4', name: 'Charlie', color: Colors.orange),
-  ];
-
-  User get currentUser => users[0];
-  Stream<Message> get messageStream => _messageController.stream;
-  Stream<Set<User>> get typingStream => _typingController.stream;
-
-  void sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-
-    final message = Message(
-      text: text,
-      sender: currentUser,
-      timestamp: DateTime.now(),
-    );
-
-    _messageController.add(message);
-    _simulateResponses(text);
-  }
-
-  void _simulateResponses(String originalMessage) {
-    final numResponses = _random.nextInt(3) + 1;
-    final typingUsers = <User>{};
-
-    for (var i = 0; i < numResponses; i++) {
-      final delay = _random.nextInt(3) + 1;
-      final randomUser = users[_random.nextInt(users.length - 1) + 1];
-      typingUsers.add(randomUser);
-      _typingController.add(Set.from(typingUsers));
-
-      Future.delayed(Duration(seconds: delay), () {
-        typingUsers.remove(randomUser);
-        _typingController.add(Set.from(typingUsers));
-
-        final response = Message(
-          text: "${randomUser.name} responds to: $originalMessage",
-          sender: randomUser,
-          timestamp: DateTime.now(),
-        );
-
-        _messageController.add(response);
-      });
-    }
-  }
-
-  void dispose() {
-    _messageController.close();
-    _typingController.close();
-  }
+  Message({
+    required this.id,
+    required this.text,
+    required this.sender,
+    required this.timestamp,
+  });
 }
 
 class OpenDiskusi extends StatefulWidget {
-  const OpenDiskusi({super.key});
+  final int groupId;
+  final String groupName;
+
+  const OpenDiskusi({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+  });
 
   @override
   State<OpenDiskusi> createState() => _OpenDiskusiState();
@@ -92,39 +47,172 @@ class OpenDiskusi extends StatefulWidget {
 class _OpenDiskusiState extends State<OpenDiskusi> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ChatService _chatService = ChatService();
   final List<Message> _messages = [];
-  Set<User> _typingUsers = {};
-  bool _isJoined = false; // Status bergabung
-
+  // bool _isJoined = true;
+  bool _isLoading = false;
+  String? _userId;
   @override
   void initState() {
     super.initState();
-    _chatService.messageStream.listen((message) {
+    _loadUserId();
+    _fetchMessages();
+  }
+
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userId = prefs.getString('user_id'); // Simpan user_id saat login
+    });
+  }
+
+  Future<void> _fetchMessages() async {
+    setState(() => _isLoading = true);
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Simpan token saat login
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages'),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body)['data'];
       setState(() {
-        _messages.add(message);
+        _messages.clear();
+        for (var msg in data) {
+          final sender = msg['user'];
+          _messages.add(
+            Message(
+              id: msg['id'], // Tambahkan ini
+              text: msg['message'],
+              sender: User(
+                id: sender['id'].toString(),
+                name: sender['name'],
+                color:
+                    Colors.primaries[int.parse(sender['id'].toString()) %
+                        Colors.primaries.length],
+              ),
+              timestamp: DateTime.parse(msg['created_at']),
+            ),
+          );
+        }
+        _isLoading = false;
       });
       _scrollToBottom();
-    });
+    } else {
+      setState(() => _isLoading = false);
+      debugPrint('Gagal ambil pesan: ${response.statusCode}');
+    }
+  }
 
-    _chatService.typingStream.listen((users) {
+  Future<void> _sendMessage(String text) async {
+    if (text.trim().isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/${widget.groupId}/store'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Bearer $token',
+      },
+      body: {'message': text},
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      _controller.clear();
+      final msgData = json.decode(response.body)['data'];
+      final sender = msgData['user'];
+
       setState(() {
-        _typingUsers = users;
+        _messages.add(
+          Message(
+            id: msgData['id'],
+            text: msgData['message'],
+            sender: User(
+              id: sender['id'].toString(),
+              name: sender['name'],
+              color:
+                  Colors.primaries[int.parse(sender['id'].toString()) %
+                      Colors.primaries.length],
+            ),
+            timestamp: DateTime.parse(msgData['created_at']),
+          ),
+        );
       });
-    });
+
+      _scrollToBottom();
+    } else {
+      debugPrint('Gagal kirim pesan: ${response.statusCode}');
+    }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    _chatService.dispose();
-    super.dispose();
+  void _showDeleteDialog(int messageId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.background,
+        title: const Text('Hapus Pesan?'),
+        content: const Text('Apakah kamu yakin ingin menghapus pesan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteMessage(messageId);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _sendMessage(String text) {
-    _chatService.sendMessage(text);
-    _controller.clear();
+  Future<void> _deleteMessage(int messageId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages/$messageId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text(data['message'] ?? 'Pesan berhasil dihapus')),
+        // );
+        setState(() {
+          _messages.removeWhere((msg) => msg.id == messageId);
+        });
+        // Refresh list pesan
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? 'Gagal menghapus pesan'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -144,68 +232,9 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       backgroundColor: user.color,
       child: Text(
         user.name[0].toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(color: Colors.white),
       ),
     );
-  }
-
-  Widget _buildTypingIndicator(User user) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 8),
-      child: Row(
-        children: [
-          _buildAvatar(user),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(
-                3,
-                (index) => Padding(
-                  padding: EdgeInsets.only(right: index < 2 ? 4 : 0),
-                  child: _buildDot(index),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDot(int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 600),
-      curve: Interval(index * 0.2, (index + 1) * 0.2, curve: Curves.easeInOut),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, -2 * value),
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Colors.grey[600],
-              shape: BoxShape.circle,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _joinGroup() {
-    setState(() {
-      _isJoined = true; // Set status bergabung menjadi true
-    });
   }
 
   @override
@@ -214,190 +243,182 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       appBar: AppBar(
         backgroundColor: AppColors.buttonBackground,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        titleSpacing: 0,
+        automaticallyImplyLeading: false, // Agar ikon back tidak otomatis
         title: Row(
           children: [
+            // Tombol Back
             IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-              color: Colors.white,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+            // Ikon Grup
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.inputBorder,
+              child: const Icon(Icons.groups, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DetailDiskusi(),
-                  ),
-                );
-              },
-              child: Row(
-                children: [
-                  Hero(
-                    tag: 'group-icon',
-                    child: CircleAvatar(
-                      backgroundColor: AppColors.inputBorder,
-                      child: const Icon(Icons.groups, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Hamil tidak sengaja',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+            // Nama Grup
+            Text(widget.groupName, style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
-      body: Container(
-        color: AppColors.background,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length + _typingUsers.length,
-                itemBuilder: (context, index) {
-                  if (index >= _messages.length) {
-                    final typingUser = _typingUsers.elementAt(
-                      index - _messages.length,
-                    );
-                    return _buildTypingIndicator(typingUser);
-                  }
 
-                  final message = _messages[index];
-                  final isMe = message.sender.id == _chatService.currentUser.id;
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message = _messages[index];
+                      final isMe =
+                          message.sender.id.toString() == _userId.toString();
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      mainAxisAlignment: isMe
-                          ? MainAxisAlignment.end
-                          : MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe) ...[
-                          _buildAvatar(message.sender),
-                          const SizedBox(width: 8),
-                        ],
-                        Flexible(
-                          child: Column(
-                            crossAxisAlignment: isMe
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                            children: [
-                              if (!isMe)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 8,
-                                    bottom: 4,
-                                  ),
-                                  child: Text(
-                                    message.sender.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 8,
+                                right: 8,
+                                bottom: 4,
+                              ),
+                              child: Text(
+                                isMe ? "Anda" : message.sender.name,
+                                style: TextStyle(
+                                  color: message.sender.color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: isMe
+                                  ? MainAxisAlignment.end
+                                  : MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (!isMe) ...[
+                                  _buildAvatar(message.sender),
+                                  const SizedBox(width: 8),
+                                ],
+                                Flexible(
+                                  child: GestureDetector(
+                                    onLongPress: () {
+                                      if (isMe) _showDeleteDialog(message.id);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: isMe
+                                            ? AppColors.buttonBackground
+                                            : Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        message.text,
+                                        style: TextStyle(
+                                          color: isMe
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isMe ? Colors.blue : Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  message.text,
-                                  style: TextStyle(
-                                    color: isMe ? Colors.white : Colors.black87,
-                                  ),
+                                if (isMe) ...[
+                                  const SizedBox(width: 8),
+                                  _buildAvatar(message.sender),
+                                ],
+                              ],
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 8,
+                                right: 8,
+                                top: 4,
+                              ),
+                              child: Text(
+                                _formatTime(message.timestamp),
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 10,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        if (isMe) ...[
-                          const SizedBox(width: 8),
-                          _buildAvatar(message.sender),
-                        ],
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.inputFill,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: const Offset(0, -1),
+                ),
+              ],
             ),
-            if (!_isJoined) // Tampilkan tombol bergabung jika belum bergabung
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: double.infinity, // Lebar penuh
-                  child: ElevatedButton(
-                    onPressed: _joinGroup,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      backgroundColor: AppColors
-                          .buttonBackground, // Warna latar belakang hijau
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    minLines: 1,
+                    maxLines: 5, // Kamu bisa sesuaikan ini
+                    decoration: const InputDecoration(
+                      hintText: 'Ketik pesan...',
+                      border: InputBorder.none,
                     ),
-                    child: const Text(
-                      'Bergabung ke Grup',
-                      style: TextStyle(color: Colors.white), // Teks putih
-                    ),
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
                   ),
                 ),
-              ),
-            if (_isJoined) // Tampilkan input field jika sudah bergabung
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.inputFill,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, -1),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(
+                    Icons.send,
+                    color: AppColors.buttonBackground,
+                  ),
+                  onPressed: () => _sendMessage(_controller.text),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: const InputDecoration(
-                          hintText: 'Ketik pesan...',
-                          border: InputBorder.none,
-                        ),
-                        onSubmitted: _sendMessage,
-                        style: const TextStyle(color: Colors.black87),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: AppColors.buttonBackground,
-                      ),
-                      onPressed: () => _sendMessage(_controller.text),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+}
+
+// Fungsi untuk format waktu
+String _formatTime(DateTime timestamp) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = DateTime(now.year, now.month, now.day - 1);
+  final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
+
+  if (messageDate == today) {
+    return 'Hari ini, ${DateFormat('HH:mm').format(timestamp)}';
+  } else if (messageDate == yesterday) {
+    return 'Kemarin, ${DateFormat('HH:mm').format(timestamp)}';
+  } else {
+    return DateFormat('dd MMM yyyy, HH:mm').format(timestamp);
   }
 }
 

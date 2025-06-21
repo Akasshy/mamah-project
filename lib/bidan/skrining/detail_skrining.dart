@@ -88,7 +88,6 @@ class _DetailSkriningState extends State<DetailSkrining> {
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
-                // Ganti 'YourNextPage()' dengan halaman tujuanmu
                 Navigator.push(
                   context,
                   MaterialPageRoute(

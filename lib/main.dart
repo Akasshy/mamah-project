@@ -1,15 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:health_app/next_register_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'loginPage.dart';
 import 'registerPage.dart';
 import 'homePage.dart';
+import 'package:flutter/services.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Mengatur status bar transparan
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  // Cek apakah user sudah login sebelumnya
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+  final role = prefs.getString('role') ?? 'ibu';
+
+  runApp(MyApp(isLoggedIn: token != null, role: role));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  final String role;
+
+  const MyApp({super.key, required this.isLoggedIn, required this.role});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -17,11 +37,13 @@ class MyApp extends StatelessWidget {
       title: 'MaMaH',
       initialRoute: '/',
       routes: {
-        '/': (context) => const NextRegisterPage(),
+        '/': (context) => isLoggedIn
+            ? HomePage(initialIndex: 0, role: role)
+            : const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/homeibu': (context) => const HomePage(initialIndex: 0, role: 'ibu'),
-        '/homebidan': (context) =>
-            const HomePage(initialIndex: 0, role: 'bidan'),
+        // '/homeibu': (context) => const HomePage(initialIndex: 0, role: 'ibu'),
+        // '/homebidan': (context) =>
+        //     const HomePage(initialIndex: 0, role: 'bidan'),
       },
     );
   }

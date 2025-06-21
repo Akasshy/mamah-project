@@ -34,6 +34,10 @@ dependencies:
   cupertino_icons: ^1.0.8
   shimmer: ^3.0.0 # Versi terbaru saat ini
   image_picker: ^0.8.4+4
+  http: ^0.13.6
+  shared_preferences: ^2.2.2
+  image: ^4.1.3
+  url_launcher: ^6.1.11
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +49,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "images/mamah-logo.png"
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -58,13 +70,14 @@ flutter:
   uses-material-design: true
 
   assets:
-    - images/docter.png
     - images/logo.png
     - images/ibu.png
     - images/bidan.png
     - images/pp.jpg
     - images/baner.jpg
     - images/baner2.jpeg
+    - images/mamah-logo.png
+    - images/default-pp.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

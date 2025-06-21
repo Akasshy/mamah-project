@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:health_app/ip_config.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/gestures.dart';
 import 'package:health_app/homePage.dart';
 import 'package:health_app/registerPage.dart';
 import 'package:health_app/app_colors.dart';
-import 'package:flutter/gestures.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,11 +21,88 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isPasswordVisible = false;
   bool _isEmailValid = true;
+  bool _isLoading = false;
 
-  // Fungsi untuk validasi email
+  @override
+  void initState() {
+    super.initState();
+    checkLoginStatus();
+  }
+
+  // Cek apakah sudah login sebelumnya
+  Future<void> checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access-token');
+    final role = prefs.getString('role') ?? 'ibu';
+
+    if (token != null && token.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(initialIndex: 0, role: role),
+        ),
+      );
+    }
+  }
+
+  // Validasi Email
   bool _validateEmail(String email) {
     final emailRegex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
     return emailRegex.hasMatch(email);
+  }
+
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+      _isEmailValid = _validateEmail(emailController.text);
+    });
+
+    if (!_isEmailValid) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": emailController.text.trim(),
+          "password": passwordController.text.trim(),
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['access_token'] != null) {
+        final role = data['user']['role'] ?? 'ibu';
+        final token = data['access_token'];
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', token);
+        await prefs.setString('role', role);
+        await prefs.setString('user_id', data['user']['id'].toString());
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePage(initialIndex: 0, role: role),
+          ),
+          (route) => false,
+        );
+      } else {
+        throw data['message'] ?? 'Login gagal';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal login: $e'),
+          backgroundColor: AppColors.buttonBackground,
+        ),
+      );
+    }
+
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -34,10 +115,8 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                Image.asset('images/docter.png', height: 150),
+                Image.asset('images/mamah-logo.png', height: 150),
                 const SizedBox(height: 40),
-
-                // Email
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -88,8 +167,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Password
                 TextField(
                   controller: passwordController,
                   obscureText: !_isPasswordVisible,
@@ -139,24 +216,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Tombol Login
                 ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isEmailValid = _validateEmail(emailController.text);
-                    });
-
-                    if (_isEmailValid) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              HomePage(initialIndex: 0, role: 'ibu'),
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonBackground,
                     minimumSize: const Size(double.infinity, 50),
@@ -164,12 +225,19 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(fontSize: 18, color: AppColors.buttonText),
-                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(
+                          color: AppColors.buttonBackground,
+                          backgroundColor: AppColors.inputFill,
+                        )
+                      : const Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: AppColors.buttonText,
+                          ),
+                        ),
                 ),
-
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -178,9 +246,7 @@ class _LoginPageState extends State<LoginPage> {
                       text: TextSpan(
                         style: const TextStyle(color: AppColors.labelText),
                         children: [
-                          const TextSpan(
-                            text: 'Belum punya akun? ',
-                          ), // Teks biasa
+                          const TextSpan(text: 'Belum punya akun? '),
                           TextSpan(
                             text: 'Daftar',
                             style: const TextStyle(
@@ -195,7 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                                   MaterialPageRoute(
                                     builder: (context) => const RegisterPage(),
                                   ),
-                                ); // Aksi saat teks "Daftar" ditekan
+                                );
                               },
                           ),
                         ],

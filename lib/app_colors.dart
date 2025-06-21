@@ -10,4 +10,5 @@ class AppColors {
   static const Color buttonText = Colors.white;
   static const Color labelText = Colors.grey;
   static const Color linkColor = Colors.green;
+  static const Color primary = Color(0xFF2E7D32);
 }

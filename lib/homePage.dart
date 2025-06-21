@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:health_app/app_colors.dart';
 import 'package:health_app/bidan/beranda_bidan.dart';
 import 'package:health_app/bidan/skrining/skrinings_bidan.dart';
 import 'package:health_app/ibu/beranda/beranda_page.dart';
@@ -6,16 +8,13 @@ import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/konsultasi/konsultasi_page.dart';
 import 'package:health_app/ibu/skrining/skrinings_page.dart';
 import 'package:health_app/ibu/edukasi_page.dart';
-import 'custom_scaffold.dart';
+import 'package:health_app/custom_scaffold.dart';
 
 class HomePage extends StatefulWidget {
   final int initialIndex;
-  final String role; // Menambahkan parameter role
-  const HomePage({
-    super.key,
-    this.initialIndex = 0,
-    required this.role,
-  }); // default Skrining
+  final String role;
+
+  const HomePage({super.key, this.initialIndex = 0, required this.role});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -24,17 +23,14 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late int _selectedIndex;
   late List<Widget> _pages;
-
-  int _konsultasiBadge = 0; // 👈 jumlah badge konsultasi
+  int _konsultasiBadge = 0;
 
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex; // Gunakan nilai dari constructor
-    _initializePages(); // Inisialisasi halaman berdasarkan role
-
-    // Simulasi jumlah badge (misalnya dari API, bisa diubah nanti)
-    _konsultasiBadge = 12;
+    _selectedIndex = widget.initialIndex;
+    _initializePages();
+    _konsultasiBadge = 12; // Simulated badge count
   }
 
   void _initializePages() {
@@ -51,11 +47,18 @@ class _HomePageState extends State<HomePage> {
         BerandaBidan(),
         SkriningBidan(),
         EdukasiPage(),
-        DiskusiPage(), // <--- Pastikan bukan DiskusiPage untuk bidan
-        KonsultasiPage(), // <--- Pastikan juga ini KonsultasiBidan
+        DiskusiPage(),
+        KonsultasiPage(),
       ];
     } else {
-      _pages = const [Center(child: Text('Role tidak dikenal'))];
+      _pages = [
+        Center(
+          child: Text(
+            'Role tidak dikenali',
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          ),
+        ),
+      ];
     }
   }
 
@@ -67,11 +70,19 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScaffold(
-      selectedIndex: _selectedIndex,
-      onNavTap: _onNavTap,
-      body: _pages[_selectedIndex],
-      consultationBadgeCount: _konsultasiBadge, // 👈 Tambahan badge di sini
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Untuk teks/ikon gelap
+        systemNavigationBarColor: AppColors.background,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: CustomScaffold(
+        selectedIndex: _selectedIndex,
+        onNavTap: _onNavTap,
+        body: _pages[_selectedIndex],
+        consultationBadgeCount: _konsultasiBadge,
+      ),
     );
   }
 }

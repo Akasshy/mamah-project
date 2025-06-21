@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/ibu/diskusi/add_diskusi.dart';
 import 'package:health_app/ibu/diskusi/open_diskusi_page.dart';
+import 'package:health_app/ip_config.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class DiskusiPage extends StatefulWidget {
   const DiskusiPage({Key? key}) : super(key: key);
@@ -11,39 +16,31 @@ class DiskusiPage extends StatefulWidget {
 }
 
 class _DiskusiPageState extends State<DiskusiPage> {
-  final List<Map<String, dynamic>> _allChats = const [
-    {
-      'name': 'R1yaping',
-      'sender': 'wow',
-      'message': 'hidup joko...',
-      'imageUrl': '',
-    },
-    {
-      'name': 'Sunda Empire',
-      'sender': 'kdd',
-      'message': 'hidupp cahu',
-      'imageUrl': '',
-    },
-    {
-      'name': 'Mapia sawah',
-      'sender': 'guzzz',
-      'message': 'hidup blonde',
-      'imageUrl': '',
-    },
-    // Tambahan data lainnya...
-  ];
-
-  List<Map<String, dynamic>> _filteredChats = [];
-
+  List<dynamic> _allGroups = [];
+  List<dynamic> _filteredGroups = [];
   final TextEditingController _searchController = TextEditingController();
   final List<bool> _isHovering = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  Map<int, Map<String, String>?> _lastMessages = {};
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    _filteredChats = List.from(_allChats);
-    _isHovering.addAll(List.generate(_allChats.length, (index) => false));
+    _initializeData();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  Future<void> _initializeData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id');
+
+    setState(() {
+      _currentUserId = userId;
+    });
+
+    await _fetchGroups();
   }
 
   @override
@@ -52,16 +49,84 @@ class _DiskusiPageState extends State<DiskusiPage> {
     super.dispose();
   }
 
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  Future<void> _fetchGroups() async {
+    final token = await _getToken();
+    if (token == null) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Anda belum login';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/groups'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> groups = data['data'];
+
+        if (!mounted) return;
+        setState(() {
+          _allGroups = groups;
+          _filteredGroups = List.from(groups)
+            ..sort((a, b) {
+              final aIsOwner =
+                  a['creator'] != null &&
+                  a['creator']['id'].toString() == _currentUserId;
+              final bIsOwner =
+                  b['creator'] != null &&
+                  b['creator']['id'].toString() == _currentUserId;
+
+              if (aIsOwner && !bIsOwner) return -1;
+              if (!aIsOwner && bIsOwner) return 1;
+              return 0;
+            });
+
+          _isHovering.clear();
+          _isHovering.addAll(List.generate(groups.length, (_) => false));
+          _isLoading = false;
+        });
+
+        for (var group in groups) {
+          _fetchLastMessage(group['id']);
+        }
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = 'Gagal memuat grup: ${response.statusCode}';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Terjadi kesalahan: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   void _onSearchChanged() {
     final keyword = _searchController.text.toLowerCase();
     setState(() {
-      _filteredChats = _allChats
-          .where(
-            (chat) =>
-                chat['name'].toLowerCase().contains(keyword) ||
-                chat['message'].toLowerCase().contains(keyword),
-          )
-          .toList();
+      _filteredGroups = _allGroups.where((group) {
+        final name = group['name']?.toLowerCase() ?? '';
+        final desc = group['description']?.toLowerCase() ?? '';
+        return name.contains(keyword) || desc.contains(keyword);
+      }).toList();
     });
   }
 
@@ -73,159 +138,487 @@ class _DiskusiPageState extends State<DiskusiPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
-        child: Container(
-          color: Colors.white,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: const [
-                    Text(
-                      'Diskusi',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  Future<void> _fetchLastMessage(int groupId) async {
+    final token = await _getToken();
+    final prefs = await SharedPreferences.getInstance();
+    final currentUserId = prefs.getString('user_id');
+
+    final resp = await http.get(
+      Uri.parse('$baseUrl/api/groups/$groupId/messages'),
+      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+    );
+
+    if (resp.statusCode == 200) {
+      final List msgs = json.decode(resp.body)['data'];
+      if (msgs.isNotEmpty) {
+        final m = msgs.last;
+        final senderId = m['user']['id'].toString();
+        final senderName = senderId == currentUserId
+            ? 'Anda'
+            : m['user']['name'];
+
+        if (!mounted) return; // <-- Tambahkan ini
+        setState(() {
+          _lastMessages[groupId] = {'sender': senderName, 'text': m['message']};
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteGroup(int groupId) async {
+    final token = await _getToken();
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/groups/$groupId/delete'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? 'Grup berhasil dihapus'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchGroups();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['message'] ?? 'Gagal menghapus grup'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: AppColors.background,
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            // App Bar with Gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.buttonBackground.withOpacity(0.9),
+                    AppColors.buttonBackground.withOpacity(0.7),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.only(
+                top: 50,
+                bottom: 20,
+                left: 24,
+                right: 24,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Forum Diskusi',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    onPressed: _fetchGroups,
+                  ),
+                ],
+              ),
+            ),
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Cari grup atau pesan...',
+                    hintText: 'Cari grup diskusi...',
                     prefixIcon: const Icon(
                       Icons.search,
                       color: AppColors.buttonBackground,
                     ),
-                    filled: true,
-                    fillColor: AppColors.inputFill,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: AppColors
-                            .inputBorderFocused, // hijau redup (misalnya: Light Green 400)
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: AppColors.inputBorder, // hijau terang
-                        width: 2,
-                      ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
                     ),
                   ),
                 ),
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: _filteredChats.length,
-                  itemBuilder: (context, index) {
-                    final chat = _filteredChats[index];
-                    final sender = chat['sender'];
-                    final message = chat['message'];
+            ),
 
-                    return MouseRegion(
-                      onEnter: (event) => _onEntered(true, index),
-                      onExit: (event) => _onEntered(false, index),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.inputBorder,
-                          child: const Icon(Icons.groups, color: Colors.white),
-                        ),
-                        title: Text(
-                          chat['name'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                            fontSize: 16,
-                          ),
-                        ),
-                        subtitle: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            // Content Area
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  child: _buildContent(theme),
+                ),
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: AppColors.buttonBackground,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          icon: const Icon(Icons.add),
+          label: const Text('Buat Grup Baru'),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddGroupPage()),
+            ).then((_) => _fetchGroups());
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(ThemeData theme) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation(AppColors.buttonBackground),
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.buttonBackground,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: _fetchGroups,
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_filteredGroups.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/empty_group.png', // Replace with your asset
+              width: 150,
+              height: 150,
+              color: Colors.grey[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _searchController.text.isEmpty
+                  ? 'Belum ada grup diskusi'
+                  : 'Grup tidak ditemukan',
+              style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _searchController.text.isEmpty
+                  ? 'Tekan tombol + untuk membuat grup baru'
+                  : 'Coba dengan kata kunci lain',
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(top: 8, bottom: 100),
+      itemCount: _filteredGroups.length,
+      separatorBuilder: (context, index) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final group = _filteredGroups[index];
+        final name = group['name'] ?? 'Tanpa Nama';
+        final description = group['description'] ?? '';
+        final groupId = group['id'];
+        final last = _lastMessages[groupId];
+        final isOwner =
+            group['creator'] != null &&
+            group['creator']['id'].toString() == _currentUserId;
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    OpenDiskusi(groupId: groupId, groupName: name),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            decoration: BoxDecoration(
+              color: _isHovering[index]
+                  ? AppColors.inputFill.withOpacity(0.5)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.buttonBackground.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.groups,
+                      color: AppColors.buttonBackground,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              '$sender: ',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
-                              ),
-                            ),
                             Expanded(
                               child: Text(
-                                message,
+                                name,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.labelText,
-                                ),
                               ),
                             ),
+                            if (isOwner)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.buttonBackground.withOpacity(
+                                    0.2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Milik Anda',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: AppColors.buttonBackground,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                        const SizedBox(height: 4),
+                        Text(
+                          description,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        tileColor: _isHovering[index]
-                            ? AppColors.inputFill
-                            : AppColors.background,
-                        onTap: () {
+                        if (last != null) ...[
+                          const SizedBox(height: 4),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${last['sender']}: ',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.buttonBackground,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: last['text'],
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (isOwner)
+                    PopupMenuButton<String>(
+                      color: AppColors.background,
+                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                      itemBuilder: (BuildContext context) => [
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: theme.primaryColor),
+                              const SizedBox(width: 8),
+                              const Text('Edit Grup'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.red[400]),
+                              const SizedBox(width: 8),
+                              const Text('Hapus Grup'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onSelected: (String value) {
+                        if (value == 'edit') {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const OpenDiskusi(),
+                              builder: (context) => AddGroupPage(
+                                groupId: groupId,
+                                initialName: name,
+                                initialDesc: description,
+                              ),
+                            ),
+                          ).then((_) => _fetchGroups());
+                        } else if (value == 'delete') {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Hapus Grup?'),
+                              content: const Text(
+                                'Grup dan semua pesannya akan dihapus. Lanjutkan?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Batal'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    _deleteGroup(groupId);
+                                  },
+                                  child: const Text(
+                                    'Hapus',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
                             ),
                           );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                        }
+                      },
+                    ),
+                ],
               ),
-            ],
-          ),
-
-          // Floating Action Button
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
-              backgroundColor: AppColors.buttonBackground,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddGroupPage()),
-                );
-              },
-              child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
