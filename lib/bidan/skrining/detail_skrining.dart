@@ -1,73 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:health_app/homePage.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:health_app/ip_config.dart';
 
 class DetailSkrining extends StatefulWidget {
-  const DetailSkrining({Key? key}) : super(key: key);
+  final Map<String, dynamic> userData;
+  const DetailSkrining({Key? key, required this.userData}) : super(key: key);
 
   @override
   State<DetailSkrining> createState() => _DetailSkriningState();
 }
 
 class _DetailSkriningState extends State<DetailSkrining> {
-  DateTime? startDate;
-  DateTime? endDate;
+  Map<String, dynamic>? screeningResult;
+  bool isLoading = true;
   final DateFormat dateFormat = DateFormat('dd MMM yyyy');
 
-  List<Map<String, dynamic>> allScores = [
-    {"tanggal": DateTime(2025, 6, 1), "skor": 12},
-    {"tanggal": DateTime(2025, 6, 5), "skor": 15},
-    {"tanggal": DateTime(2025, 6, 10), "skor": 14},
-    {"tanggal": DateTime(2025, 6, 11), "skor": 9},
-  ];
-
-  List<Map<String, dynamic>> filteredScores = [];
-
-  void filterScores() {
-    if (startDate != null && endDate != null) {
-      if (startDate!.isAfter(endDate!)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Tanggal mulai tidak boleh setelah tanggal akhir"),
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        filteredScores = allScores.where((data) {
-          DateTime tanggal = data["tanggal"];
-          return tanggal.isAtSameMomentAs(startDate!) ||
-              tanggal.isAtSameMomentAs(endDate!) ||
-              (tanggal.isAfter(startDate!) && tanggal.isBefore(endDate!));
-        }).toList();
-      });
-    }
+  @override
+  void initState() {
+    super.initState();
+    _fetchScreeningResult();
   }
 
-  Future<void> _selectDate(BuildContext context, bool isStart) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: isStart
-          ? (startDate ?? DateTime.now())
-          : (endDate ?? DateTime.now()),
-      firstDate: DateTime(2023),
-      lastDate: DateTime(2030),
+  Future<void> _fetchScreeningResult() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final userId = widget.userData['id'];
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/screening/user/$userId'),
+      headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
     );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          startDate = picked;
-        } else {
-          endDate = picked;
-        }
-      });
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body)['data'];
+      if (mounted) {
+        setState(() {
+          screeningResult = data;
+          isLoading = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          screeningResult = null;
+          isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final latestScore = allScores.last;
+    final String namaIbu = widget.userData['name'];
+    final String? photoPath = widget.userData['photo'];
+    final ImageProvider imageProvider =
+        (photoPath != null && photoPath.isNotEmpty)
+        ? NetworkImage('$baseUrl/storage/$photoPath')
+        : const AssetImage('images/default-pp.jpg');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -76,212 +69,89 @@ class _DetailSkriningState extends State<DetailSkrining> {
         backgroundColor: Colors.green[600],
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Hasil Skrining Ibu : Tashi",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        HomePage(initialIndex: 4, role: 'bidan'),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('Hubungi Pasien'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            if (filteredScores.isEmpty) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "EPDS Terbaru",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Tanggal: ${dateFormat.format(latestScore['tanggal'])}",
-                    ),
-                    Text("Skor: ${latestScore['skor']}"),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Rekomendasi:",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const Text(
-                      "Perbanyak istirahat dan konsultasikan ke dokter.",
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _selectDate(context, true),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.green.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        startDate != null
-                            ? dateFormat.format(startDate!)
-                            : 'Tanggal Mulai',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _selectDate(context, false),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: Colors.green.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        endDate != null
-                            ? dateFormat.format(endDate!)
-                            : 'Tanggal Akhir',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (startDate == null || endDate == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Pilih tanggal mulai dan akhir terlebih dahulu",
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : screeningResult == null
+          ? const Center(child: Text("Hasil skrining tidak ditemukan."))
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage: imageProvider,
+                          backgroundColor: Colors.grey[300],
                         ),
-                      ),
-                    );
-                  } else {
-                    filterScores();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                        const SizedBox(height: 12),
+                        Text(
+                          namaIbu,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: const Text(
-                  "Tampilkan Riwayat",
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              HomePage(initialIndex: 4, role: 'bidan'),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('Hubungi Pasien'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "EPDS Terbaru",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Tanggal: ${dateFormat.format(DateTime.parse(screeningResult!['created_at']))}",
+                        ),
+                        Text("Skor: ${screeningResult!['score']}"),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Rekomendasi:",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(screeningResult!['recommendation']),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-
-            Expanded(
-              child: filteredScores.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "Belum ada riwayat skrining untuk tanggal ini.",
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: filteredScores.length,
-                      itemBuilder: (context, index) {
-                        final item = filteredScores[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                dateFormat.format(item["tanggal"]),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Skor: ${item["skor"]}",
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                "Rekomendasi:",
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const Text(
-                                "Perbanyak istirahat dan konsultasikan ke dokter.",
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

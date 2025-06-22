@@ -76,11 +76,13 @@ class _BerandaBidanState extends State<BerandaBidan> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      const SizedBox(width: 12),
-                      Image.asset(
-                        'images/logo.png',
-                        height: 36,
-                        fit: BoxFit.contain,
+                      Text(
+                        'MaMaH',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.buttonBackground,
+                        ),
                       ),
                       const Spacer(),
                       GestureDetector(

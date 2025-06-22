@@ -7,6 +7,7 @@ import 'package:health_app/ip_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:shimmer/shimmer.dart';
 
 class DiskusiPage extends StatefulWidget {
   const DiskusiPage({Key? key}) : super(key: key);
@@ -354,12 +355,16 @@ class _DiskusiPageState extends State<DiskusiPage> {
     );
   }
 
+  // Replace the existing _buildContent method with this new version
   Widget _buildContent(ThemeData theme) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(AppColors.buttonBackground),
-        ),
+      return ListView.separated(
+        padding: const EdgeInsets.only(top: 8, bottom: 100),
+        itemCount: 6, // Number of skeleton items to show
+        separatorBuilder: (context, index) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          return _buildSkeletonItem();
+        },
       );
     }
 
@@ -619,6 +624,52 @@ class _DiskusiPageState extends State<DiskusiPage> {
           ),
         );
       },
+    );
+  }
+
+  // Add this new method for skeleton loading items
+  Widget _buildSkeletonItem() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[200]!,
+        highlightColor: Colors.grey[100]!,
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    height: 12,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(width: 150, height: 12, color: Colors.white),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Container(width: 24, height: 24, color: Colors.white),
+          ],
+        ),
+      ),
     );
   }
 }

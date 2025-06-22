@@ -2,10 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
+import 'package:health_app/homePage.dart';
+import 'package:health_app/ibu/skrining/show_score_page.dart';
 import 'package:health_app/ip_config.dart';
 import 'package:health_app/profile.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class Beranda extends StatefulWidget {
   const Beranda({Key? key}) : super(key: key);
@@ -17,11 +21,54 @@ class Beranda extends StatefulWidget {
 class _BerandaState extends State<Beranda> {
   String? userName;
   String? photoUrl;
+  String skor = '-';
+  String kategori = '-';
+
+  final PageController _bannerController = PageController();
+  int _currentBannerIndex = 0;
+
+  final List<String> dailyTips = [
+    "Istirahat cukup penting untuk kesehatan mental",
+    "Luangkan waktu untuk diri sendiri",
+    "Jangan ragu meminta bantuan",
+    "Olahraga ringan dapat meningkatkan mood",
+    "Tetap terhubung dengan orang terdekat",
+    "Kurangi penggunaan media sosial",
+    "Jaga pola makan dan hidrasi",
+  ];
 
   @override
   void initState() {
     super.initState();
     loadUserData();
+    fetchScreeningResult();
+    _startBannerTimer();
+  }
+
+  @override
+  void dispose() {
+    _bannerController.dispose();
+    super.dispose();
+  }
+
+  void _startBannerTimer() {
+    Future.delayed(const Duration(seconds: 5)).then((_) {
+      if (_bannerController.hasClients) {
+        if (_currentBannerIndex < 4) {
+          _bannerController.nextPage(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        } else {
+          _bannerController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        }
+        _startBannerTimer();
+      }
+    });
   }
 
   void loadUserData() async {
@@ -38,9 +85,6 @@ class _BerandaState extends State<Beranda> {
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    debugPrint('STATUS: ${response.statusCode}');
-    debugPrint('BODY: ${response.body}');
-
     if (response.statusCode == 200) {
       try {
         final data = jsonDecode(response.body);
@@ -51,8 +95,28 @@ class _BerandaState extends State<Beranda> {
       } catch (e) {
         debugPrint('Gagal decode JSON: $e');
       }
-    } else {
-      debugPrint('API gagal (status: ${response.statusCode})');
+    }
+  }
+
+  void fetchScreeningResult() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/screening/result'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final result = data['data'];
+
+      if (mounted) {
+        setState(() {
+          skor = result['score'].toString();
+          kategori = result['category'] ?? 'Belum ada data';
+        });
+      }
     }
   }
 
@@ -66,6 +130,8 @@ class _BerandaState extends State<Beranda> {
       'images/baner.jpg',
     ];
 
+    final String tipsHariIni = dailyTips[DateTime.now().weekday % 7];
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -74,10 +140,19 @@ class _BerandaState extends State<Beranda> {
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(70),
+          preferredSize: const Size.fromHeight(80),
           child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              // boxShadow: [
+              //   BoxShadow(
+              //     color: Colors.black.withOpacity(0.1),
+              //     blurRadius: 10,
+              //     offset: const Offset(0, 5),
+              //   ),
+              // ],
+            ),
             padding: const EdgeInsets.only(top: 10.0),
-            color: Colors.white,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),
@@ -85,31 +160,27 @@ class _BerandaState extends State<Beranda> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Image.asset(
-                            'images/logo.png',
-                            height: 36,
-                            fit: BoxFit.contain,
-                          ),
-                        ],
+                      Text(
+                        'MaMaH',
+                        style: TextStyle(
+                          fontSize: 34,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.buttonBackground,
+                        ),
                       ),
                       const Spacer(),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProfilePage(),
-                                ),
-                              ).then((_) {
-                                loadUserData();
-                              });
-                            },
-                            child: Column(
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfilePage(),
+                            ),
+                          ).then((_) => loadUserData());
+                        },
+                        child: Row(
+                          children: [
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -121,31 +192,30 @@ class _BerandaState extends State<Beranda> {
                                     color: Colors.black87,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Lihat Profil',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProfilePage(),
-                                ),
-                              ).then((_) {
-                                loadUserData();
-                              });
-                            },
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundImage:
-                                  (photoUrl == null || photoUrl!.isEmpty)
-                                  ? const AssetImage('images/default-pp.jpg')
-                                        as ImageProvider
-                                  : NetworkImage(photoUrl!),
+                            const SizedBox(width: 12),
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundColor: Colors.grey[200],
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundImage:
+                                    (photoUrl == null || photoUrl!.isEmpty)
+                                    ? const AssetImage('images/default-pp.jpg')
+                                    : NetworkImage(photoUrl!) as ImageProvider,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -160,59 +230,121 @@ class _BerandaState extends State<Beranda> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'Selamat Datang, ${userName ?? ''}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1),
+                ),
                 SizedBox(
-                  height: MediaQuery.of(context).size.width * 6 / 16,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: imageUrls.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        margin: const EdgeInsets.only(right: 4),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            imageUrls[index],
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, exception, stackTrace) {
-                              return const Center(
-                                child: Text('Failed to load image'),
-                              );
-                            },
+                  height: 180,
+                  child: Stack(
+                    children: [
+                      PageView.builder(
+                        controller: _bannerController,
+                        itemCount: imageUrls.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentBannerIndex = index;
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                imageUrls[index],
+                                fit: BoxFit.cover,
+                                errorBuilder:
+                                    (context, exception, stackTrace) =>
+                                        Container(
+                                          color: Colors.grey[200],
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                            ),
+                                          ),
+                                        ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      Positioned(
+                        bottom: 10,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: SmoothPageIndicator(
+                            controller: _bannerController,
+                            count: imageUrls.length,
+                            effect: const WormEffect(
+                              dotHeight: 8,
+                              dotWidth: 8,
+                              activeDotColor: Colors.white,
+                              dotColor: Colors.white54,
+                            ),
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildSummaryCard(
-                  'Ringkasan Skor Skrining Terakhir',
-                  'Skor Anda: 12',
-                  Colors.green[100],
-                  Icons.check_circle,
-                ),
-                const SizedBox(height: 16),
-                _buildNotificationCard(
-                  'Notifikasi',
-                  'Anda memiliki 2 notifikasi baru.',
-                  Colors.blue[100],
-                  Icons.notifications_active,
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  'Informasi Terbaru',
-                  'Jangan lupa untuk melakukan skrining kesehatan mental Anda.',
-                  Colors.orange[100],
-                  Icons.info_outline,
-                ),
+                ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
+                const SizedBox(height: 24),
+                _buildHealthSummaryCard(
+                  'Ringkasan Kesehatan',
+                  'Skor Skrining Terakhir: $skor',
+                  'Status: $kategori',
+                  Icons.health_and_safety,
+                  Colors.green.withOpacity(0.8),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LihatSkor(),
+                      ),
+                    );
+                  },
+                ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
                 const SizedBox(height: 16),
                 _buildTipsCard(
-                  'Tips Kesehatan Ibu Setelah Melahirkan',
-                  '1. Istirahat yang cukup.\n2. Makan makanan bergizi.\n3. Jaga kesehatan mental.',
-                  Colors.pink[100],
-                  Icons.favorite,
-                ),
+                  'Tips Hari Ini',
+                  tipsHariIni,
+                  Icons.lightbulb,
+                  Colors.orange.withOpacity(0.8),
+                ).animate().fadeIn(duration: 900.ms).slideX(begin: -0.1),
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  'Artikel Terbaru',
+                  'Baca artikel tentang kesehatan mental pasca melahirkan',
+                  Icons.article,
+                  Colors.purple.withOpacity(0.8),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const HomePage(initialIndex: 2, role: 'ibu'),
+                      ),
+                    );
+                  },
+                ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
               ],
             ),
           ),
@@ -221,85 +353,112 @@ class _BerandaState extends State<Beranda> {
     );
   }
 
-  Widget _buildSummaryCard(
+  Widget _buildTipsCard(
     String title,
     String content,
-    Color? color,
     IconData icon,
+    Color color,
   ) {
-    return _buildCardTemplate(title, content, color, icon);
-  }
-
-  Widget _buildNotificationCard(
-    String title,
-    String content,
-    Color? color,
-    IconData icon,
-  ) {
-    return _buildCardTemplate(title, content, color, icon);
+    return _buildCardTemplate(title, content, icon, color);
   }
 
   Widget _buildInfoCard(
     String title,
     String content,
-    Color? color,
     IconData icon,
-  ) {
-    return _buildCardTemplate(title, content, color, icon);
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return _buildCardTemplate(
+      title,
+      content,
+      icon,
+      color,
+      action: 'Baca Selengkapnya',
+      onTap: onTap,
+    );
   }
 
-  Widget _buildTipsCard(
+  Widget _buildHealthSummaryCard(
     String title,
-    String content,
-    Color? color,
+    String score,
+    String status,
     IconData icon,
-  ) {
-    return _buildCardTemplate(title, content, color, icon);
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return _buildCardTemplate(
+      title,
+      '$score\n$status',
+      icon,
+      color,
+      onTap: onTap,
+    );
   }
 
   Widget _buildCardTemplate(
     String title,
     String content,
-    Color? color,
     IconData icon,
-  ) {
+    Color color, {
+    bool badge = false,
+    String? action,
+    VoidCallback? onTap,
+  }) {
     return Material(
-      elevation: 3,
-      borderRadius: BorderRadius.circular(8),
+      elevation: 2,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color ?? Colors.grey.shade200, Colors.white],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
+              colors: [color.withOpacity(0.2), Colors.white],
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 32, color: Colors.black54),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 8),
-                    Text(content, style: const TextStyle(fontSize: 16)),
-                  ],
-                ),
+                    child: Icon(icon, size: 20, color: color),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+              Text(
+                content,
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+              if (action != null) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    action,
+                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:health_app/ip_config.dart';
 import 'dart:async';
-// import 'dart:math';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:health_app/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Add this import
+import 'package:intl/intl.dart';
 
 class User {
   final String id;
@@ -17,7 +16,7 @@ class User {
 }
 
 class Message {
-  final int id; // Tambahkan ini
+  final int id;
   final String text;
   final User sender;
   final DateTime timestamp;
@@ -48,9 +47,10 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Message> _messages = [];
-  // bool _isJoined = true;
   bool _isLoading = false;
   String? _userId;
+  int? _editingMessageId;
+
   @override
   void initState() {
     super.initState();
@@ -61,15 +61,16 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userId = prefs.getString('user_id'); // Simpan user_id saat login
+      _userId = prefs.getString('user_id');
     });
   }
 
   Future<void> _fetchMessages() async {
+    if (!mounted) return; // Tambahkan ini
     setState(() => _isLoading = true);
 
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token'); // Simpan token saat login
+    final token = prefs.getString('token');
 
     final response = await http.get(
       Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages'),
@@ -78,13 +79,15 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body)['data'];
+
+      if (!mounted) return; // Tambahkan pengecekan ini juga
       setState(() {
         _messages.clear();
         for (var msg in data) {
           final sender = msg['user'];
           _messages.add(
             Message(
-              id: msg['id'], // Tambahkan ini
+              id: msg['id'],
               text: msg['message'],
               sender: User(
                 id: sender['id'].toString(),
@@ -101,6 +104,7 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       });
       _scrollToBottom();
     } else {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       debugPrint('Gagal ambil pesan: ${response.statusCode}');
     }
@@ -119,7 +123,10 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': 'Bearer $token',
       },
-      body: {'message': text},
+      body: {
+        'message': text,
+        if (_editingMessageId != null) 'id': _editingMessageId.toString(),
+      },
     );
 
     if (response.statusCode == 201 || response.statusCode == 200) {
@@ -128,20 +135,41 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       final sender = msgData['user'];
 
       setState(() {
-        _messages.add(
-          Message(
-            id: msgData['id'],
-            text: msgData['message'],
-            sender: User(
-              id: sender['id'].toString(),
-              name: sender['name'],
-              color:
-                  Colors.primaries[int.parse(sender['id'].toString()) %
-                      Colors.primaries.length],
+        if (_editingMessageId != null) {
+          final index = _messages.indexWhere(
+            (msg) => msg.id == _editingMessageId,
+          );
+          if (index != -1) {
+            _messages[index] = Message(
+              id: msgData['id'],
+              text: msgData['message'],
+              sender: User(
+                id: sender['id'].toString(),
+                name: sender['name'],
+                color:
+                    Colors.primaries[int.parse(sender['id'].toString()) %
+                        Colors.primaries.length],
+              ),
+              timestamp: DateTime.parse(msgData['created_at']),
+            );
+          }
+        } else {
+          _messages.add(
+            Message(
+              id: msgData['id'],
+              text: msgData['message'],
+              sender: User(
+                id: sender['id'].toString(),
+                name: sender['name'],
+                color:
+                    Colors.primaries[int.parse(sender['id'].toString()) %
+                        Colors.primaries.length],
+              ),
+              timestamp: DateTime.parse(msgData['created_at']),
             ),
-            timestamp: DateTime.parse(msgData['created_at']),
-          ),
-        );
+          );
+        }
+        _editingMessageId = null;
       });
 
       _scrollToBottom();
@@ -190,13 +218,9 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text(data['message'] ?? 'Pesan berhasil dihapus')),
-        // );
         setState(() {
           _messages.removeWhere((msg) => msg.id == messageId);
         });
-        // Refresh list pesan
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -243,29 +267,25 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       appBar: AppBar(
         backgroundColor: AppColors.buttonBackground,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false, // Agar ikon back tidak otomatis
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
-            // Tombol Back
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () {
                 Navigator.pop(context);
               },
             ),
-            // Ikon Grup
             CircleAvatar(
               radius: 16,
               backgroundColor: AppColors.inputBorder,
               child: const Icon(Icons.groups, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
-            // Nama Grup
             Text(widget.groupName, style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
-
       body: Column(
         children: [
           Expanded(
@@ -279,7 +299,6 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                       final message = _messages[index];
                       final isMe =
                           message.sender.id.toString() == _userId.toString();
-
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Column(
@@ -315,8 +334,50 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                                 Flexible(
                                   child: GestureDetector(
                                     onLongPress: () {
-                                      if (isMe) _showDeleteDialog(message.id);
+                                      if (isMe) {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          builder: (_) => SafeArea(
+                                            child: Wrap(
+                                              children: [
+                                                ListTile(
+                                                  leading: const Icon(
+                                                    Icons.edit,
+                                                  ),
+                                                  title: const Text(
+                                                    'Edit Pesan',
+                                                  ),
+                                                  onTap: () {
+                                                    Navigator.pop(context);
+                                                    setState(() {
+                                                      _controller.text =
+                                                          message.text;
+                                                      _editingMessageId =
+                                                          message.id;
+                                                    });
+                                                  },
+                                                ),
+                                                ListTile(
+                                                  leading: const Icon(
+                                                    Icons.delete,
+                                                  ),
+                                                  title: const Text(
+                                                    'Hapus Pesan',
+                                                  ),
+                                                  onTap: () {
+                                                    Navigator.pop(context);
+                                                    _showDeleteDialog(
+                                                      message.id,
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }
                                     },
+
                                     child: Container(
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
@@ -381,7 +442,7 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                   child: TextField(
                     controller: _controller,
                     minLines: 1,
-                    maxLines: 5, // Kamu bisa sesuaikan ini
+                    maxLines: 5,
                     decoration: const InputDecoration(
                       hintText: 'Ketik pesan...',
                       border: InputBorder.none,
@@ -406,7 +467,6 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
   }
 }
 
-// Fungsi untuk format waktu
 String _formatTime(DateTime timestamp) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -419,61 +479,5 @@ String _formatTime(DateTime timestamp) {
     return 'Kemarin, ${DateFormat('HH:mm').format(timestamp)}';
   } else {
     return DateFormat('dd MMM yyyy, HH:mm').format(timestamp);
-  }
-}
-
-// Detail Diskusi
-class DetailDiskusi extends StatelessWidget {
-  const DetailDiskusi({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Grup'),
-        backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: AppColors.background,
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 16),
-            // Ikon grup di tengah
-            Hero(
-              tag: 'group-icon',
-              child: CircleAvatar(
-                radius: 40,
-                backgroundColor: AppColors.iconColor.withOpacity(0.15),
-                child: const Icon(
-                  Icons.groups,
-                  size: 40,
-                  color: AppColors.iconColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Nama grup
-            const Text(
-              'Mapia Sawah',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Deskripsi grup
-            const Text(
-              'Grup diskusi yang membahas segala hal tentang kehidupan petani sawah secara santai dan mendalam.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: AppColors.labelText),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
