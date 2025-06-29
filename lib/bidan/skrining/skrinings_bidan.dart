@@ -22,7 +22,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
   bool _isSearching = false;
-
+  String _selectedStatus = '';
   @override
   void initState() {
     super.initState();
@@ -95,12 +95,20 @@ class _SkriningBidanState extends State<SkriningBidan> {
 
   void _filterChats() {
     final query = _searchController.text.toLowerCase();
+
     setState(() {
       _isSearching = query.isNotEmpty;
       _filteredChats = _allChats.where((chat) {
         final name = chat['name'].toString().toLowerCase();
         final category = chat['category'].toString().toLowerCase();
-        return name.contains(query) || category.contains(query);
+
+        final matchesSearch = name.contains(query) || category.contains(query);
+
+        final matchesStatus =
+            _selectedStatus.isEmpty ||
+            category == _selectedStatus.toLowerCase();
+
+        return matchesSearch && matchesStatus;
       }).toList();
     });
   }
@@ -224,6 +232,8 @@ class _SkriningBidanState extends State<SkriningBidan> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
+                    _buildStatusChip('Semua', Colors.blue),
+                    const SizedBox(width: 8),
                     _buildStatusChip('Rendah', Colors.green),
                     const SizedBox(width: 8),
                     _buildStatusChip('Sedang', Colors.orange),
@@ -342,32 +352,49 @@ class _SkriningBidanState extends State<SkriningBidan> {
   }
 
   Widget _buildStatusChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        // ✅ sekarang di sini child dari Container
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w500,
+    final isSelected =
+        (_selectedStatus.isEmpty && text == 'Semua') || _selectedStatus == text;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (text == 'Semua') {
+            _selectedStatus = '';
+          } else if (_selectedStatus == text) {
+            _selectedStatus = '';
+          } else {
+            _selectedStatus = text;
+          }
+          _filterChats();
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: TextStyle(
+                color: isSelected ? color : Colors.black54,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -415,6 +442,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
     int index,
   ) {
     return Card(
+      color: AppColors.background,
       margin: const EdgeInsets.symmetric(vertical: 4),
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -434,6 +462,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Avatar
               imagePath.isNotEmpty
@@ -443,20 +472,18 @@ class _SkriningBidanState extends State<SkriningBidan> {
                         '$baseUrl/storage/${chat['imageUrl']}',
                       ),
                       backgroundColor: Colors.grey[200],
-                      onBackgroundImageError: (exception, stackTrace) {
-                        // Handle image loading error
-                      },
                     )
                   : CircleAvatar(
                       radius: 24,
                       backgroundColor: Colors.grey[200],
                       child: const Icon(Icons.person, color: Colors.white),
                     ),
-              const SizedBox(width: 16),
 
-              // Patient Info
+              const SizedBox(width: 12),
+
+              // Nama & ID
               Expanded(
-                flex: 3,
+                flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -469,30 +496,35 @@ class _SkriningBidanState extends State<SkriningBidan> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'ID: ${chat['userId']}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
                   ],
                 ),
               ),
 
-              // Status
-              Expanded(flex: 2, child: _buildStatusIndicator(chat['category'])),
+              const SizedBox(width: 8),
 
-              // Last Screening
-              Expanded(
-                child: Text(
-                  (chat['lastScreening'] != null &&
-                          chat['lastScreening'].toString().isNotEmpty)
-                      ? chat['lastScreening'].toString().split('T')[0]
-                      : '-',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              // Status
+              Flexible(flex: 4, child: _buildStatusIndicator(chat['category'])),
+
+              const SizedBox(width: 4),
+
+              // Tanggal terakhir
+              Flexible(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    (chat['lastScreening'] != null &&
+                            chat['lastScreening'].toString().isNotEmpty)
+                        ? chat['lastScreening'].toString().split('T')[0]
+                        : '-',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
 
-              // Chevron
+              const SizedBox(width: 4),
+
               const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),

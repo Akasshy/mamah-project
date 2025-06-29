@@ -131,13 +131,13 @@ class _DiskusiPageState extends State<DiskusiPage> {
     });
   }
 
-  void _onEntered(bool isHovering, int index) {
-    if (index < _isHovering.length) {
-      setState(() {
-        _isHovering[index] = isHovering;
-      });
-    }
-  }
+  // void _onEntered(bool isHovering, int index) {
+  //   if (index < _isHovering.length) {
+  //     setState(() {
+  //       _isHovering[index] = isHovering;
+  //     });
+  //   }
+  // }
 
   Future<void> _fetchLastMessage(int groupId) async {
     final token = await _getToken();

@@ -1,43 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:health_app/ip_config.dart';
-import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
+import 'package:flutter/material.dart';
 import 'package:health_app/app_colors.dart';
+import 'package:health_app/ip_config.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-
-class User {
-  final String id;
-  final String name;
-  final Color color;
-
-  User({required this.id, required this.name, required this.color});
-}
-
-class Message {
-  final int id;
-  final String text;
-  final User sender;
-  final DateTime timestamp;
-
-  Message({
-    required this.id,
-    required this.text,
-    required this.sender,
-    required this.timestamp,
-  });
-}
 
 class OpenDiskusi extends StatefulWidget {
   final int groupId;
   final String groupName;
 
-  const OpenDiskusi({
-    super.key,
-    required this.groupId,
-    required this.groupName,
-  });
+  const OpenDiskusi({Key? key, required this.groupId, required this.groupName})
+    : super(key: key);
 
   @override
   State<OpenDiskusi> createState() => _OpenDiskusiState();
@@ -46,8 +21,8 @@ class OpenDiskusi extends StatefulWidget {
 class _OpenDiskusiState extends State<OpenDiskusi> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Message> _messages = [];
-  bool _isLoading = false;
+  List<Map<String, dynamic>> _messages = [];
+  bool _isSending = false;
   String? _userId;
   int? _editingMessageId;
 
@@ -58,6 +33,13 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
     _fetchMessages();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -66,176 +48,80 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
   }
 
   Future<void> _fetchMessages() async {
-    if (!mounted) return; // Tambahkan ini
-    setState(() => _isLoading = true);
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages'),
-      headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body)['data'];
-
-      if (!mounted) return; // Tambahkan pengecekan ini juga
-      setState(() {
-        _messages.clear();
-        for (var msg in data) {
-          final sender = msg['user'];
-          _messages.add(
-            Message(
-              id: msg['id'],
-              text: msg['message'],
-              sender: User(
-                id: sender['id'].toString(),
-                name: sender['name'],
-                color:
-                    Colors.primaries[int.parse(sender['id'].toString()) %
-                        Colors.primaries.length],
-              ),
-              timestamp: DateTime.parse(msg['created_at']),
-            ),
-          );
-        }
-        _isLoading = false;
-      });
-      _scrollToBottom();
-    } else {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      debugPrint('Gagal ambil pesan: ${response.statusCode}');
-    }
-  }
-
-  Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/groups/${widget.groupId}/store'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Bearer $token',
-      },
-      body: {
-        'message': text,
-        if (_editingMessageId != null) 'id': _editingMessageId.toString(),
-      },
-    );
-
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      _controller.clear();
-      final msgData = json.decode(response.body)['data'];
-      final sender = msgData['user'];
-
-      setState(() {
-        if (_editingMessageId != null) {
-          final index = _messages.indexWhere(
-            (msg) => msg.id == _editingMessageId,
-          );
-          if (index != -1) {
-            _messages[index] = Message(
-              id: msgData['id'],
-              text: msgData['message'],
-              sender: User(
-                id: sender['id'].toString(),
-                name: sender['name'],
-                color:
-                    Colors.primaries[int.parse(sender['id'].toString()) %
-                        Colors.primaries.length],
-              ),
-              timestamp: DateTime.parse(msgData['created_at']),
-            );
-          }
-        } else {
-          _messages.add(
-            Message(
-              id: msgData['id'],
-              text: msgData['message'],
-              sender: User(
-                id: sender['id'].toString(),
-                name: sender['name'],
-                color:
-                    Colors.primaries[int.parse(sender['id'].toString()) %
-                        Colors.primaries.length],
-              ),
-              timestamp: DateTime.parse(msgData['created_at']),
-            ),
-          );
-        }
-        _editingMessageId = null;
-      });
-
-      _scrollToBottom();
-    } else {
-      debugPrint('Gagal kirim pesan: ${response.statusCode}');
-    }
-  }
-
-  void _showDeleteDialog(int messageId) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.background,
-        title: const Text('Hapus Pesan?'),
-        content: const Text('Apakah kamu yakin ingin menghapus pesan ini?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteMessage(messageId);
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _deleteMessage(int messageId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages/$messageId'),
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages'),
         headers: {
-          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
         },
       );
 
-      final data = json.decode(response.body);
-
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'] as List<dynamic>;
+        if (!mounted) return;
         setState(() {
-          _messages.removeWhere((msg) => msg.id == messageId);
+          _messages = data.map((e) => Map<String, dynamic>.from(e)).toList();
         });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'Gagal menghapus pesan'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _scrollToBottom();
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
-        ),
+      // Error fetching message diabaikan
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_controller.text.trim().isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final text = _controller.text;
+    _controller.clear();
+
+    if (_editingMessageId != null) {
+      final index = _messages.indexWhere((m) => m['id'] == _editingMessageId);
+      if (index != -1) {
+        setState(() {
+          _messages[index]['message'] = text;
+          _messages[index]['updated_at'] = DateTime.now().toIso8601String();
+        });
+      }
+    } else {
+      final tempMessage = {
+        'id': DateTime.now().millisecondsSinceEpoch, // temporary id
+        'message': text,
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': null,
+        'user': {'id': _userId, 'name': 'Anda'},
+      };
+      setState(() => _messages.add(tempMessage));
+      _scrollToBottom();
+    }
+
+    _editingMessageId = null;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/groups/${widget.groupId}/store'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Bearer $token',
+        },
+        body: {
+          'message': text,
+          if (_editingMessageId != null) 'id': _editingMessageId.toString(),
+        },
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        await _fetchMessages(); // Sinkronisasi ulang agar data fresh dari server
+      }
+    } catch (_) {
+      // Tidak tampilkan error (karena tidak pakai snackbar)
     }
   }
 
@@ -251,12 +137,242 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
     });
   }
 
-  Widget _buildAvatar(User user) {
-    return CircleAvatar(
-      backgroundColor: user.color,
-      child: Text(
-        user.name[0].toUpperCase(),
-        style: const TextStyle(color: Colors.white),
+  void _showSnackbar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showMessageOptions(int messageId, String messageText) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('Edit Pesan'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _controller.text = messageText;
+                  _editingMessageId = messageId;
+                });
+                FocusScope.of(context).requestFocus(FocusNode());
+                Future.delayed(Duration.zero, () {
+                  FocusScope.of(context).requestFocus(FocusNode());
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Hapus Pesan'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteDialog(messageId);
+              },
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TextButton(
+                child: const Text('Batal'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(int messageId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Pesan?'),
+        content: const Text('Pesan yang dihapus tidak dapat dikembalikan'),
+        actions: [
+          TextButton(
+            child: const Text('Batal'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteMessage(messageId);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(int messageId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    setState(() {
+      _messages.removeWhere((msg) => msg['id'] == messageId);
+    });
+
+    try {
+      await http.delete(
+        Uri.parse('$baseUrl/api/groups/${widget.groupId}/messages/$messageId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+      // Tidak tampilkan pesan sukses atau gagal
+    } catch (_) {
+      // Tidak tampilkan pesan error
+    }
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> message, bool isMe) {
+    final timestamp = DateTime.parse(message['created_at']);
+    final timeFormat = DateFormat('HH:mm');
+    final isEdited =
+        message['updated_at'] != null &&
+        message['updated_at'] != message['created_at'];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        crossAxisAlignment: isMe
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: isMe
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isMe) ...[
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor:
+                      Colors.primaries[int.parse(
+                            message['user']['id'].toString(),
+                          ) %
+                          Colors.primaries.length],
+                  child: Text(
+                    message['user']['name'][0].toUpperCase(),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: GestureDetector(
+                  onLongPress: () {
+                    if (isMe) {
+                      _showMessageOptions(message['id'], message['message']);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isMe
+                          ? AppColors.buttonBackground
+                          : Colors.grey[200],
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isMe ? 16 : 4),
+                        bottomRight: Radius.circular(isMe ? 4 : 16),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: isMe
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          message['message'],
+                          style: TextStyle(
+                            color: isMe ? Colors.white : Colors.black87,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          children: [
+                            if (!isMe)
+                              Text(
+                                message['user']['name'],
+                                style: TextStyle(
+                                  color: isMe
+                                      ? Colors.white70
+                                      : Colors.grey[600],
+                                  fontSize: 11,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            Text(
+                              timeFormat.format(timestamp),
+                              style: TextStyle(
+                                color: isMe ? Colors.white70 : Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                            ),
+                            if (isEdited)
+                              Text(
+                                '(diedit)',
+                                style: TextStyle(
+                                  color: isMe
+                                      ? Colors.white70
+                                      : Colors.grey[600],
+                                  fontSize: 11,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (isMe) ...[
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor:
+                      Colors.primaries[int.parse(_userId.toString()) %
+                          Colors.primaries.length],
+                  child: Text(
+                    'Anda'[0],
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -264,199 +380,151 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 1,
         title: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () {
-                Navigator.pop(context);
-              },
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.green[100],
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.group, color: Colors.green),
             ),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.inputBorder,
-              child: const Icon(Icons.groups, color: Colors.white, size: 18),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.groupName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                // Text(
+                //   '${_messages.length} pesan',
+                //   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                // ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(widget.groupName, style: const TextStyle(color: Colors.white)),
           ],
         ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black54),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black54),
+            onPressed: _fetchMessages,
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+            child: _messages.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.forum, size: 60, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Belum ada pesan',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _fetchMessages,
+                          child: const Text('Muat Ulang'),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.only(top: 16),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final message = _messages[index];
                       final isMe =
-                          message.sender.id.toString() == _userId.toString();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Column(
-                          crossAxisAlignment: isMe
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                left: 8,
-                                right: 8,
-                                bottom: 4,
-                              ),
-                              child: Text(
-                                isMe ? "Anda" : message.sender.name,
-                                style: TextStyle(
-                                  color: message.sender.color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Row(
-                              mainAxisAlignment: isMe
-                                  ? MainAxisAlignment.end
-                                  : MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                if (!isMe) ...[
-                                  _buildAvatar(message.sender),
-                                  const SizedBox(width: 8),
-                                ],
-                                Flexible(
-                                  child: GestureDetector(
-                                    onLongPress: () {
-                                      if (isMe) {
-                                        showModalBottomSheet(
-                                          context: context,
-                                          builder: (_) => SafeArea(
-                                            child: Wrap(
-                                              children: [
-                                                ListTile(
-                                                  leading: const Icon(
-                                                    Icons.edit,
-                                                  ),
-                                                  title: const Text(
-                                                    'Edit Pesan',
-                                                  ),
-                                                  onTap: () {
-                                                    Navigator.pop(context);
-                                                    setState(() {
-                                                      _controller.text =
-                                                          message.text;
-                                                      _editingMessageId =
-                                                          message.id;
-                                                    });
-                                                  },
-                                                ),
-                                                ListTile(
-                                                  leading: const Icon(
-                                                    Icons.delete,
-                                                  ),
-                                                  title: const Text(
-                                                    'Hapus Pesan',
-                                                  ),
-                                                  onTap: () {
-                                                    Navigator.pop(context);
-                                                    _showDeleteDialog(
-                                                      message.id,
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: isMe
-                                            ? AppColors.buttonBackground
-                                            : Colors.grey[300],
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        message.text,
-                                        style: TextStyle(
-                                          color: isMe
-                                              ? Colors.white
-                                              : Colors.black87,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (isMe) ...[
-                                  const SizedBox(width: 8),
-                                  _buildAvatar(message.sender),
-                                ],
-                              ],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                left: 8,
-                                right: 8,
-                                top: 4,
-                              ),
-                              child: Text(
-                                _formatTime(message.timestamp),
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                          message['user']['id'].toString() ==
+                          _userId.toString();
+                      return _buildMessageBubble(message, isMe);
                     },
                   ),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.inputFill,
+              color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    minLines: 1,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      hintText: 'Ketik pesan...',
-                      border: InputBorder.none,
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 120),
+                    child: TextField(
+                      controller: _controller,
+                      minLines: 1,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        hintText: 'Ketik pesan...',
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
                     ),
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.send,
-                    color: AppColors.buttonBackground,
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.green,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  onPressed: () => _sendMessage(_controller.text),
+                  child: IconButton(
+                    icon: _isSending
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send, color: Colors.white),
+                    onPressed: _isSending ? null : _sendMessage,
+                  ),
                 ),
               ],
             ),
@@ -464,20 +532,5 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
         ],
       ),
     );
-  }
-}
-
-String _formatTime(DateTime timestamp) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final yesterday = DateTime(now.year, now.month, now.day - 1);
-  final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
-
-  if (messageDate == today) {
-    return 'Hari ini, ${DateFormat('HH:mm').format(timestamp)}';
-  } else if (messageDate == yesterday) {
-    return 'Kemarin, ${DateFormat('HH:mm').format(timestamp)}';
-  } else {
-    return DateFormat('dd MMM yyyy, HH:mm').format(timestamp);
   }
 }
