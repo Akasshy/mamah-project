@@ -131,14 +131,6 @@ class _DiskusiPageState extends State<DiskusiPage> {
     });
   }
 
-  // void _onEntered(bool isHovering, int index) {
-  //   if (index < _isHovering.length) {
-  //     setState(() {
-  //       _isHovering[index] = isHovering;
-  //     });
-  //   }
-  // }
-
   Future<void> _fetchLastMessage(int groupId) async {
     final token = await _getToken();
     final prefs = await SharedPreferences.getInstance();
@@ -590,30 +582,66 @@ class _DiskusiPageState extends State<DiskusiPage> {
                             ),
                           ).then((_) => _fetchGroups());
                         } else if (value == 'delete') {
-                          showDialog(
+                          showModalBottomSheet(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Hapus Grup?'),
-                              content: const Text(
-                                'Grup dan semua pesannya akan dihapus. Lanjutkan?',
+                            isDismissible: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Batal'),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    _deleteGroup(groupId);
-                                  },
-                                  child: const Text(
-                                    'Hapus',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
                             ),
+                            backgroundColor: Colors.white,
+                            builder: (context) {
+                              return Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Center(
+                                      child: Text(
+                                        'Hapus Grup?',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Grup dan semua pesannya akan dihapus. Lanjutkan?',
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text(
+                                            'Batal',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                            _deleteGroup(groupId);
+                                          },
+                                          child: const Text(
+                                            'Hapus',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           );
                         }
                       },

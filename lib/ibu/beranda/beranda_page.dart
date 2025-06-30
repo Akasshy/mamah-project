@@ -121,15 +121,8 @@ class _BerandaState extends State<Beranda> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final List<String> imageUrls = [
-      'images/baner.jpg',
-      'images/baner2.jpeg',
-      'images/baner.jpg',
-      'images/baner2.jpeg',
-      'images/baner.jpg',
-    ];
-
     final String tipsHariIni = dailyTips[DateTime.now().weekday % 7];
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -142,16 +135,7 @@ class _BerandaState extends State<Beranda> {
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(80),
           child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              // boxShadow: [
-              //   BoxShadow(
-              //     color: Colors.black.withOpacity(0.1),
-              //     blurRadius: 10,
-              //     offset: const Offset(0, 5),
-              //   ),
-              // ],
-            ),
+            decoration: BoxDecoration(color: Colors.white),
             padding: const EdgeInsets.only(top: 10.0),
             child: Center(
               child: ConstrainedBox(
@@ -188,7 +172,7 @@ class _BerandaState extends State<Beranda> {
                                   userName ?? 'Loading...',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     color: Colors.black87,
                                   ),
                                 ),
@@ -230,83 +214,81 @@ class _BerandaState extends State<Beranda> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    'Selamat Datang, ${userName ?? ''}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1),
-                ),
+                // Menu Horizontal Compact
                 SizedBox(
-                  height: 180,
-                  child: Stack(
+                  height: 100,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     children: [
-                      PageView.builder(
-                        controller: _bannerController,
-                        itemCount: imageUrls.length,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentBannerIndex = index;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.asset(
-                                imageUrls[index],
-                                fit: BoxFit.cover,
-                                errorBuilder:
-                                    (context, exception, stackTrace) =>
-                                        Container(
-                                          color: Colors.grey[200],
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.image_not_supported,
-                                            ),
-                                          ),
-                                        ),
-                              ),
+                      _buildMenuCard(
+                        context,
+                        'Skrining',
+                        Icons.assignment_outlined,
+                        AppColors.primary,
+                        () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const HomePage(initialIndex: 1, role: 'ibu'),
                             ),
                           );
                         },
                       ),
-                      Positioned(
-                        bottom: 10,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: SmoothPageIndicator(
-                            controller: _bannerController,
-                            count: imageUrls.length,
-                            effect: const WormEffect(
-                              dotHeight: 8,
-                              dotWidth: 8,
-                              activeDotColor: Colors.white,
-                              dotColor: Colors.white54,
+                      const SizedBox(width: 12),
+                      _buildMenuCard(
+                        context,
+                        'Edukasi',
+                        Icons.menu_book_outlined,
+                        Colors.blue,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const HomePage(initialIndex: 2, role: 'ibu'),
                             ),
-                          ),
-                        ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildMenuCard(
+                        context,
+                        'Diskusi',
+                        Icons.forum_outlined,
+                        Colors.green,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const HomePage(initialIndex: 3, role: 'ibu'),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      _buildMenuCard(
+                        context,
+                        'Konsultasi',
+                        Icons.chat_outlined,
+                        Colors.orange,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const HomePage(initialIndex: 4, role: 'ibu'),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
-                const SizedBox(height: 24),
+                ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.4),
+
+                const SizedBox(height: 16),
                 _buildHealthSummaryCard(
                   'Ringkasan Kesehatan',
                   'Skor Skrining Terakhir: $skor',
@@ -326,15 +308,15 @@ class _BerandaState extends State<Beranda> {
                 _buildTipsCard(
                   'Tips Hari Ini',
                   tipsHariIni,
-                  Icons.lightbulb,
+                  Icons.lightbulb_outline,
                   Colors.orange.withOpacity(0.8),
                 ).animate().fadeIn(duration: 900.ms).slideX(begin: -0.1),
                 const SizedBox(height: 16),
                 _buildInfoCard(
                   'Artikel Terbaru',
                   'Baca artikel tentang kesehatan mental pasca melahirkan',
-                  Icons.article,
-                  Colors.purple.withOpacity(0.8),
+                  Icons.article_outlined,
+                  Colors.blue.withOpacity(0.8),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -347,6 +329,53 @@ class _BerandaState extends State<Beranda> {
                 ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      elevation: 1,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          width: 94, // Lebar fixed untuk konsistensi
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: color),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),
@@ -401,7 +430,6 @@ class _BerandaState extends State<Beranda> {
     String content,
     IconData icon,
     Color color, {
-    bool badge = false,
     String? action,
     VoidCallback? onTap,
   }) {

@@ -21,6 +21,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isPasswordVisible = false;
   bool _isEmailValid = true;
+  bool _isPasswordValid = true;
   bool _isLoading = false;
 
   @override
@@ -29,7 +30,16 @@ class _LoginPageState extends State<LoginPage> {
     checkLoginStatus();
   }
 
-  // Cek apakah sudah login sebelumnya
+  // ✅ Fungsi untuk reset form login
+  void resetForm() {
+    emailController.clear();
+    passwordController.clear();
+    setState(() {
+      _isEmailValid = true;
+      _isPasswordValid = true;
+    });
+  }
+
   Future<void> checkLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access-token');
@@ -45,7 +55,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Validasi Email
   bool _validateEmail(String email) {
     final emailRegex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
     return emailRegex.hasMatch(email);
@@ -53,11 +62,12 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     setState(() {
-      _isLoading = true;
       _isEmailValid = _validateEmail(emailController.text);
+      _isPasswordValid = passwordController.text.trim().isNotEmpty;
+      _isLoading = true;
     });
 
-    if (!_isEmailValid) {
+    if (!_isEmailValid || !_isPasswordValid) {
       setState(() => _isLoading = false);
       return;
     }
@@ -170,36 +180,54 @@ class _LoginPageState extends State<LoginPage> {
                 TextField(
                   controller: passwordController,
                   obscureText: !_isPasswordVisible,
+                  onChanged: (value) {
+                    setState(() {
+                      _isPasswordValid = value.trim().isNotEmpty;
+                    });
+                  },
                   decoration: InputDecoration(
                     prefixIcon: const Icon(
                       Icons.lock,
                       color: AppColors.iconColor,
                     ),
                     labelText: 'Kata Sandi',
-                    labelStyle: const TextStyle(color: AppColors.labelText),
+                    labelStyle: TextStyle(
+                      color: _isPasswordValid
+                          ? AppColors.labelText
+                          : Colors.red,
+                    ),
                     filled: true,
                     fillColor: AppColors.inputFill,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        color: AppColors.inputBorder,
+                      borderSide: BorderSide(
+                        color: _isPasswordValid
+                            ? AppColors.inputBorder
+                            : Colors.red,
                         width: 1.5,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        color: AppColors.inputBorder,
+                      borderSide: BorderSide(
+                        color: _isPasswordValid
+                            ? AppColors.inputBorder
+                            : Colors.red,
                         width: 1.5,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        color: AppColors.inputBorderFocused,
+                      borderSide: BorderSide(
+                        color: _isPasswordValid
+                            ? AppColors.inputBorderFocused
+                            : Colors.red,
                         width: 2,
                       ),
                     ),
+                    errorText: _isPasswordValid
+                        ? null
+                        : 'Kata sandi tidak boleh kosong',
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible
@@ -255,13 +283,14 @@ class _LoginPageState extends State<LoginPage> {
                               fontWeight: FontWeight.bold,
                             ),
                             recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                Navigator.push(
+                              ..onTap = () async {
+                                await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => const RegisterPage(),
                                   ),
                                 );
+                                resetForm(); // ✅ Reset form saat kembali dari halaman register
                               },
                           ),
                         ],

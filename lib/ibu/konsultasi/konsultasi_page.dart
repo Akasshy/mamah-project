@@ -65,7 +65,7 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark, // Untuk status bar gelap
+        statusBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
@@ -97,6 +97,56 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
         ),
         body: Column(
           children: [
+            // Tambahkan menu Daftar Bidan di sini
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Material(
+                borderRadius: BorderRadius.circular(8),
+                color: AppColors.primary,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    // Navigasi ke halaman Daftar Bidan
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DaftarBidanPage(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.people_alt, color: Colors.white),
+                        SizedBox(width: 12),
+                        Text(
+                          'Daftar Bidan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Spacer(),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: TextField(
@@ -183,6 +233,19 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Halaman Daftar Bidan (tambahkan di file terpisah atau di bagian bawah file ini)
+class DaftarBidanPage extends StatelessWidget {
+  const DaftarBidanPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Daftar Bidan')),
+      body: const Center(child: Text('Halaman Daftar Bidan')),
     );
   }
 }

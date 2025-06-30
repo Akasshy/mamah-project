@@ -59,8 +59,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
             'name': user['name'] ?? 'Nama tidak tersedia',
             'imageUrl': user['photo']?.toString() ?? '', // Safe conversion
             'category':
-                user['screening_result']?['category']?.toString() ??
-                'Belum ada data',
+                user['screening_result']?['category']?.toString() ?? 'Kosong',
             'userData': user,
             'lastScreening':
                 user['screening_result']?['created_at']?.toString() ?? '',
@@ -240,7 +239,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
                     const SizedBox(width: 8),
                     _buildStatusChip('Tinggi', Colors.red),
                     const SizedBox(width: 8),
-                    _buildStatusChip('Belum ada data', Colors.grey),
+                    _buildStatusChip('Kosong', Colors.grey),
                   ],
                 ),
               ),
@@ -369,7 +368,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
+        margin: const EdgeInsets.only(right: 4),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
@@ -475,8 +474,11 @@ class _SkriningBidanState extends State<SkriningBidan> {
                     )
                   : CircleAvatar(
                       radius: 24,
-                      backgroundColor: Colors.grey[200],
-                      child: const Icon(Icons.person, color: Colors.white),
+                      backgroundColor: AppColors.inputFill,
+                      child: const Icon(
+                        Icons.person,
+                        color: AppColors.buttonBackground,
+                      ),
                     ),
 
               const SizedBox(width: 12),
@@ -491,10 +493,9 @@ class _SkriningBidanState extends State<SkriningBidan> {
                       chat['name'],
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 12,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      softWrap: true, // ✅ ini biar bisa pindah baris
                     ),
                   ],
                 ),
@@ -518,13 +519,12 @@ class _SkriningBidanState extends State<SkriningBidan> {
                         ? chat['lastScreening'].toString().split('T')[0]
                         : '-',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    overflow: TextOverflow.ellipsis,
+                    softWrap: true, // ✅ biar bisa multiline
                   ),
                 ),
               ),
 
-              const SizedBox(width: 4),
-
+              // const SizedBox(width: 4),
               const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),

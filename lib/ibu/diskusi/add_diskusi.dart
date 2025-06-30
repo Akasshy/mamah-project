@@ -82,7 +82,11 @@ class _AddGroupPageState extends State<AddGroupPage> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(resData['message'] ?? 'Berhasil'),
+            backgroundColor: AppColors.buttonBackground,
+            content: Text(
+              resData['message'] ?? 'Berhasil',
+              style: TextStyle(color: Colors.white),
+            ),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),

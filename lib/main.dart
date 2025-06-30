@@ -42,9 +42,6 @@ class MyApp extends StatelessWidget {
             ? HomePage(initialIndex: 0, role: role)
             : const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        // '/homeibu': (context) => const HomePage(initialIndex: 0, role: 'ibu'),
-        // '/homebidan': (context) =>
-        //     const HomePage(initialIndex: 0, role: 'bidan'),
       },
     );
   }
