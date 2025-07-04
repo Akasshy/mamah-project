@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/homePage.dart';
+import 'package:health_app/ibu/konsultasi/open_konsultasi_page.dart';
 // import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -76,6 +77,43 @@ class _DetailSkriningState extends State<DetailSkrining> {
         return Colors.red;
       default:
         return Colors.grey;
+    }
+  }
+
+  Future<void> _buatKonsultasi(int ibuId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/consultations/store'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'ibu_id': ibuId.toString(), // sekarang pakai ibu_id
+        'question': 'Halo, saya bidan. Ada yang ingin saya bantu?',
+      },
+    );
+
+    print('Status: ${response.statusCode}');
+    print('Body: ${response.body}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body)['data'];
+      final int konsultasiId = data['id'];
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OpenKonsultasi(konsultasiId: konsultasiId),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal: ${response.body}')));
     }
   }
 
@@ -285,15 +323,8 @@ class _DetailSkriningState extends State<DetailSkrining> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                HomePage(initialIndex: 4, role: 'bidan'),
-                          ),
-                        );
-                      },
+                      onPressed: () => _buatKonsultasi(widget.userData['id']),
+                      // <== ini penting
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green[600],
                         foregroundColor: Colors.white,

@@ -181,45 +181,64 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
       isDismissible: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(
-                child: Text(
-                  'Hapus Pesan?',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+              Icon(
+                Icons.delete_forever_rounded,
+                size: 48,
+                color: Colors.red[400],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hapus Pesan?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               const Text(
-                'Pesan yang dihapus tidak dapat dikembalikan',
-                style: TextStyle(fontSize: 16),
+                'Pesan yang dihapus tidak dapat dipulihkan. Lanjutkan?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.black54),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.black),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      child: const Text('Batal'),
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _deleteMessage(messageId);
-                    },
-                    child: const Text(
-                      'Hapus',
-                      style: TextStyle(color: Colors.red),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteMessage(messageId);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hapus',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ],

@@ -1,252 +1,384 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'dart:math';
-
 import 'package:health_app/app_colors.dart';
-
-class Message {
-  final String text;
-  final bool isMe;
-  final DateTime timestamp;
-
-  Message({required this.text, required this.isMe, required this.timestamp});
-}
-
-class ChatService {
-  final StreamController<Message> _messageController =
-      StreamController<Message>.broadcast();
-  final StreamController<bool> _typingController =
-      StreamController<bool>.broadcast();
-  final Random _random = Random();
-
-  Stream<Message> get messageStream => _messageController.stream;
-  Stream<bool> get typingStream => _typingController.stream;
-
-  void sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-
-    final message = Message(text: text, isMe: true, timestamp: DateTime.now());
-    _messageController.add(message);
-    _simulateResponse(text);
-  }
-
-  void _simulateResponse(String originalMessage) {
-    final delay = _random.nextInt(3) + 1;
-    _typingController.add(true);
-
-    Future.delayed(Duration(seconds: delay), () {
-      _typingController.add(false);
-      final response = Message(
-        text: "This is a simulated response to: $originalMessage",
-        isMe: false,
-        timestamp: DateTime.now(),
-      );
-      _messageController.add(response);
-    });
-  }
-
-  void dispose() {
-    _messageController.close();
-    _typingController.close();
-  }
-}
+import 'package:health_app/ip_config.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OpenKonsultasi extends StatefulWidget {
-  const OpenKonsultasi({super.key});
+  final int konsultasiId;
+
+  const OpenKonsultasi({Key? key, required this.konsultasiId})
+    : super(key: key);
 
   @override
   State<OpenKonsultasi> createState() => _OpenKonsultasiState();
 }
 
 class _OpenKonsultasiState extends State<OpenKonsultasi> {
+  List<Map<String, dynamic>> _chat = [];
   final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final ChatService _chatService = ChatService();
-  final List<Message> _messages = [];
-  bool _isTyping = false;
+  String? _userId;
+  String? _userRole;
+  bool _isSending = false;
+  int? _editingReplyId;
+
+  String _lawanBicaraName = '';
+  String? _lawanBicaraPhoto;
 
   @override
   void initState() {
     super.initState();
-    _chatService.messageStream.listen((message) {
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _loadUserInfo();
+    await _fetchKonsultasi();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getString('user_id');
+    _userRole = prefs.getString('role');
+  }
+
+  // Future<void> _fetchKonsultasi() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final token = prefs.getString('token');
+
+  //   final response = await http.get(
+  //     Uri.parse('$baseUrl/api/consultations/${widget.konsultasiId}/show'),
+  //     headers: {'Authorization': 'Bearer $token'},
+  //   );
+
+  //   if (response.statusCode == 200 && mounted) {
+  //     final data = jsonDecode(response.body)['data'];
+  //     final List<dynamic> reply = data['reply'] ?? [];
+
+  //     // Ambil ID pembuat topik
+  //     String topicOwnerId = _userRole == 'ibu'
+  //         ? data['ibu_id'].toString()
+  //         : data['bidan_id'].toString();
+
+  //     setState(() {
+  //       // Ambil ID pembuat topik berdasarkan role login
+  //       final topicOwnerId = _userRole == 'ibu'
+  //           ? data['ibu_id'].toString()
+  //           : data['bidan_id'].toString();
+
+  //       _chat = [
+  //         {
+  //           'id': data['id'],
+  //           'sender': data['topic'], // atau pakai nama ibu/bidan kalau mau
+  //           'message': data['topic'],
+  //           'isQuestion': true,
+  //           'user_id':
+  //               topicOwnerId, // ✅ ID pembuat topik, bukan dari field 'user_id'
+  //         },
+  //         ...reply.map(
+  //           (e) => {
+  //             'id': e['id'],
+  //             'sender_id': e['sender_id']?.toString(),
+  //             'message': e['message'],
+  //             'isQuestion': false,
+  //             'created_at': e['created_at'],
+  //             'updated_at': e['updated_at'],
+  //           },
+  //         ),
+  //       ];
+
+  //       if (_userRole == 'ibu') {
+  //         _lawanBicaraName = data['bidan'] ?? '';
+  //         _lawanBicaraPhoto = data['bidan_photo'];
+  //       } else {
+  //         _lawanBicaraName = data['ibu'] ?? '';
+  //         _lawanBicaraPhoto = data['ibu_photo'];
+  //       }
+  //     });
+  //   }
+  // }
+  Future<void> _fetchKonsultasi() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/consultations/${widget.konsultasiId}/show'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200 && mounted) {
+      final data = jsonDecode(response.body)['data'];
+      final List<dynamic> reply = data['reply'] ?? [];
+
       setState(() {
-        _messages.add(message);
+        _chat = reply
+            .map<Map<String, dynamic>>(
+              (e) => {
+                'id': e['id'],
+                'sender_id': e['sender_id']?.toString(),
+                'message': e['message'],
+                'isQuestion': false,
+                'created_at': e['created_at'],
+                'updated_at': e['updated_at'],
+              },
+            )
+            .toList();
+
+        // Set lawan bicara berdasarkan role yang login
+        if (_userRole == 'ibu') {
+          _lawanBicaraName = data['bidan'] ?? '';
+          _lawanBicaraPhoto = data['bidan_photo'];
+        } else {
+          _lawanBicaraName = data['ibu'] ?? '';
+          _lawanBicaraPhoto = data['ibu_photo'];
+        }
       });
-      _scrollToBottom();
-    });
-
-    _chatService.typingStream.listen((isTyping) {
-      setState(() {
-        _isTyping = isTyping;
-      });
-    });
+    }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    _chatService.dispose();
-    super.dispose();
+  Future<void> _sendReply() async {
+    if (_controller.text.trim().isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final url = Uri.parse('$baseUrl/api/consultations/reply');
+    final body = {
+      'consultation_id': widget.konsultasiId.toString(),
+      'message': _controller.text,
+      if (_editingReplyId != null) 'reply_id': _editingReplyId.toString(),
+    };
+
+    setState(() => _isSending = true);
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      _controller.clear();
+      _editingReplyId = null;
+      await _fetchKonsultasi();
+    }
+
+    setState(() => _isSending = false);
   }
 
-  void _sendMessage(String text) {
-    _chatService.sendMessage(text);
-    _controller.clear();
+  Future<void> _deleteReply(int replyId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/consultations/reply/$replyId/delete'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      await _fetchKonsultasi();
+    }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[800]
-                  : Colors.grey[200],
-              borderRadius: BorderRadius.circular(20),
+  void _showMessageOptions(int messageId, String messageText) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('Edit Pesan'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() {
+                  _controller.text = messageText;
+                  _editingReplyId = messageId;
+                });
+              },
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDot(0),
-                const SizedBox(width: 4),
-                _buildDot(1),
-                const SizedBox(width: 4),
-                _buildDot(2),
-              ],
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Hapus Pesan'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteDialog(messageId);
+              },
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: TextButton(
+                child: const Text('Batal'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDot(int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 600),
-      curve: Interval(index * 0.2, (index + 1) * 0.2, curve: Curves.easeInOut),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, -2 * value),
-          child: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[400]
-                  : Colors.grey[600],
-              shape: BoxShape.circle,
-            ),
+  void _showDeleteDialog(int messageId) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_rounded, size: 48, color: Colors.red),
+              const SizedBox(height: 12),
+              const Text(
+                'Hapus Pesan?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Pesan yang dihapus tidak dapat dikembalikan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.cancel, color: Colors.black),
+                      label: const Text('Batal'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Hapus'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteReply(messageId);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
+        foregroundColor: AppColors.background,
         backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false, // kita atur manual
-        titleSpacing: 0, // hilangkan jarak default kiri
         title: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-              color: Colors.white,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+            CircleAvatar(
+              backgroundImage: _lawanBicaraPhoto != null
+                  ? NetworkImage(_lawanBicaraPhoto!)
+                  : const AssetImage('images/default-pp.jpg') as ImageProvider,
+              radius: 18,
             ),
-            const SizedBox(width: 8),
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DetailKonsultasi(),
-                  ),
-                );
-              },
-              child: Row(
-                children: [
-                  Hero(
-                    tag: 'profile-photo',
-                    child: const CircleAvatar(
-                      radius: 16,
-                      backgroundImage: AssetImage('images/pp.jpg'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Sung Hunter',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _lawanBicaraName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: AppColors.background,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
       ),
-
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
+              itemCount: _chat.length,
               itemBuilder: (context, index) {
-                if (index == _messages.length) {
-                  return _buildTypingIndicator();
-                }
+                final msg = _chat[index];
+                final isMe = msg['isQuestion']
+                    ? (msg['user_id']?.toString() == _userId)
+                    : (msg['sender_id']?.toString() == _userId);
 
-                final message = _messages[index];
-                return Align(
-                  alignment: message.isMe
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: message.isMe
-                          ? Theme.of(context).primaryColor
-                          : Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[800]
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      message.text,
-                      style: TextStyle(
-                        color: message.isMe
-                            ? Colors.white
-                            : Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
+                return GestureDetector(
+                  onLongPress: () {
+                    if (!msg['isQuestion'] && isMe) {
+                      _showMessageOptions(msg['id'], msg['message']);
+                    }
+                  },
+                  child: Align(
+                    alignment: isMe
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? AppColors.buttonBackground
+                            : Color.fromARGB(255, 207, 255, 208),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            msg['message'],
+                            style: TextStyle(
+                              color: isMe ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (!msg['isQuestion'])
+                            Text(
+                              _formatTimestamp(msg),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isMe ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -254,46 +386,37 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
               },
             ),
           ),
-          Container(
+          Padding(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.inputFill,
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.black.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black,
-                    ),
+                    minLines: 1,
+                    maxLines: 5,
                     decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      hintStyle: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey[400]
-                            : Colors.grey[600],
+                      hintText: _editingReplyId != null
+                          ? 'Edit pesan...'
+                          : 'Tulis pesan...',
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
                       ),
-                      border: InputBorder.none,
                     ),
-                    onSubmitted: _sendMessage,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.send, color: AppColors.buttonBackground),
-                  onPressed: () => _sendMessage(_controller.text),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: Colors.green,
+                  child: IconButton(
+                    icon: _isSending
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Icon(Icons.send, color: Colors.white),
+                    onPressed: _isSending ? null : _sendReply,
+                  ),
                 ),
               ],
             ),
@@ -302,66 +425,21 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
       ),
     );
   }
-}
 
-class DetailKonsultasi extends StatelessWidget {
-  const DetailKonsultasi({super.key});
+  String _formatTimestamp(Map<String, dynamic> msg) {
+    final createdAt = msg['created_at'];
+    final updatedAt = msg['updated_at'];
+    if (createdAt == null) return '';
+    final isEdited = updatedAt != null && createdAt != updatedAt;
+    final time = isEdited ? updatedAt : createdAt;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail Profile'),
-        backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
-      ),
-      backgroundColor: AppColors.background,
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Hero(
-              tag: 'profile-photo',
-              child: const CircleAvatar(
-                radius: 50,
-                backgroundImage: AssetImage('images/pp.jpg'),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-            const Text(
-              'Sung Hunter',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: const [
-                Icon(Icons.phone, color: AppColors.iconColor),
-                SizedBox(width: 10),
-                Text('0812-3456-7890', style: TextStyle(fontSize: 16)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: const [
-                Icon(Icons.location_on, color: AppColors.iconColor),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Jl. Contoh Alamat No. 123, Bandung',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    try {
+      final dateTime = DateTime.parse(time).toLocal();
+      final formatted =
+          '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      return isEdited ? '$formatted (diedit)' : formatted;
+    } catch (_) {
+      return '';
+    }
   }
 }

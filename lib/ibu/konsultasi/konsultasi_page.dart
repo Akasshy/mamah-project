@@ -1,7 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
+import 'package:health_app/ibu/konsultasi/daftarbidan.dart';
 import 'package:health_app/ibu/konsultasi/open_konsultasi_page.dart';
+import 'package:health_app/ip_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class KonsultasiPage extends StatefulWidget {
   const KonsultasiPage({Key? key}) : super(key: key);
@@ -11,25 +16,16 @@ class KonsultasiPage extends StatefulWidget {
 }
 
 class _KonsultasiPageState extends State<KonsultasiPage> {
-  final List<Map<String, dynamic>> _allChats = const [
-    {
-      'name': 'Sung Hunter',
-      'message': 'hidup joko...',
-      'imageUrl': 'images/pp.jpg',
-    },
-    {'name': 'Sunda Empire', 'message': 'hidupp cahu', 'imageUrl': ''},
-    {'name': 'Mapia sawah', 'message': 'hidup blonde', 'imageUrl': ''},
-  ];
-
-  List<Map<String, dynamic>> _filteredChats = [];
+  List<dynamic> _allChats = [];
+  List<dynamic> _filteredChats = [];
   final TextEditingController _searchController = TextEditingController();
-  final List<bool> _isHovering = [];
+  bool _isLoading = true;
+  String? _role; // untuk menyimpan role login
 
   @override
   void initState() {
     super.initState();
-    _filteredChats = List.from(_allChats);
-    _isHovering.addAll(List.generate(_allChats.length, (_) => false));
+    _fetchKonsultasi();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -42,22 +38,142 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
   void _onSearchChanged() {
     final keyword = _searchController.text.toLowerCase();
     setState(() {
-      _filteredChats = _allChats
-          .where(
-            (chat) =>
-                chat['name'].toLowerCase().contains(keyword) ||
-                chat['message'].toLowerCase().contains(keyword),
-          )
-          .toList();
+      _filteredChats = _allChats.where((chat) {
+        final name = _role == 'bidan' ? chat['name'] : chat['bidan'];
+        final topic = chat['topic']?.toLowerCase() ?? '';
+        return (name?.toLowerCase() ?? '').contains(keyword) ||
+            topic.contains(keyword);
+      }).toList();
     });
   }
 
-  void _onEntered(bool isHovering, int index) {
-    if (index < _isHovering.length) {
-      setState(() {
-        _isHovering[index] = isHovering;
-      });
+  Future<void> _fetchKonsultasi() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final role = prefs.getString('role'); // ambil role user
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/consultations'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (mounted) {
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final chats = data['data'];
+
+        setState(() {
+          _allChats = chats;
+          _filteredChats = chats;
+          _role = role;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        debugPrint('Gagal mengambil data konsultasi.');
+      }
     }
+  }
+
+  Future<void> _deleteKonsultasi(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/consultations/$id/delete'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Konsultasi berhasil dihapus'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _fetchKonsultasi(); // Refresh list
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menghapus konsultasi'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showDeleteConfirmation(int id) {
+    showModalBottomSheet(
+      backgroundColor: AppColors.background,
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red[400],
+                size: 48,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Hapus Konsultasi?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Tindakan ini akan menghapus seluruh isi konsultasi termasuk semua pesan. Anda yakin?',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Batal'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteKonsultasi(id);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Hapus'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -97,7 +213,6 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
         ),
         body: Column(
           children: [
-            // Tambahkan menu Daftar Bidan di sini
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Material(
@@ -106,11 +221,10 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () {
-                    // Navigasi ke halaman Daftar Bidan
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const DaftarBidanPage(),
+                        builder: (context) => const DaftarPasanganPage(),
                       ),
                     );
                   },
@@ -119,23 +233,20 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
                       horizontal: 16,
                       vertical: 12,
                     ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
                     child: Row(
-                      children: const [
-                        Icon(Icons.people_alt, color: Colors.white),
-                        SizedBox(width: 12),
+                      children: [
+                        const Icon(Icons.people_alt, color: Colors.white),
+                        const SizedBox(width: 12),
                         Text(
-                          'Daftar Bidan',
-                          style: TextStyle(
+                          _role == 'ibu' ? 'Daftar Bidan' : 'Daftar Ibu',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
                         ),
-                        Spacer(),
-                        Icon(
+                        const Spacer(),
+                        const Icon(
                           Icons.arrow_forward_ios,
                           color: Colors.white,
                           size: 16,
@@ -148,104 +259,115 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Cari nama atau pesan...',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.buttonBackground,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.inputFill,
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.inputBorderFocused,
-                      width: 1.5,
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      spreadRadius: 1,
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.inputBorder,
-                      width: 2,
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari...',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.buttonBackground,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 20,
                     ),
                   ),
                 ),
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filteredChats.length,
-                itemBuilder: (context, index) {
-                  final chat = _filteredChats[index];
-                  final String imagePath = chat['imageUrl'];
-                  final String message = chat['message'];
+            _isLoading
+                ? const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Expanded(
+                    child: _filteredChats.isEmpty
+                        ? const Center(child: Text('Belum ada konsultasi.'))
+                        : ListView.builder(
+                            itemCount: _filteredChats.length,
+                            itemBuilder: (context, index) {
+                              final chat = _filteredChats[index];
+                              final displayName = _role == 'bidan'
+                                  ? chat['name']
+                                  : chat['bidan'];
 
-                  return MouseRegion(
-                    onEnter: (_) => _onEntered(true, index),
-                    onExit: (_) => _onEntered(false, index),
-                    child: ListTile(
-                      leading: imagePath.isNotEmpty
-                          ? CircleAvatar(
-                              backgroundImage: AssetImage(imagePath),
-                              backgroundColor: Colors.grey[300],
-                            )
-                          : const CircleAvatar(
-                              backgroundColor: AppColors.inputBorder,
-                              child: Icon(Icons.person, color: Colors.white),
-                            ),
-                      title: Text(
-                        chat['name'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          fontSize: 16,
-                        ),
-                      ),
-                      subtitle: Text(
-                        message,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.labelText),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ),
-                      tileColor: _isHovering[index]
-                          ? AppColors.inputFill
-                          : AppColors.background,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const OpenKonsultasi(),
+                              return GestureDetector(
+                                onLongPress: () async {
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  final userId = prefs.getString('user_id');
+
+                                  final isIbu =
+                                      _role == 'ibu' &&
+                                      chat['user_id'].toString() == userId;
+                                  final isBidan =
+                                      _role == 'bidan' &&
+                                      chat['bidan_id'].toString() == userId;
+
+                                  if (isIbu || isBidan) {
+                                    _showDeleteConfirmation(chat['id']);
+                                  }
+                                },
+
+                                child: ListTile(
+                                  leading: const CircleAvatar(
+                                    backgroundColor: AppColors.inputBorder,
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    displayName ?? '-',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    chat['last_reply'] ?? chat['topic'] ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.labelText,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OpenKonsultasi(
+                                          konsultasiId: chat['id'],
+                                        ),
+                                      ),
+                                    );
+                                    _fetchKonsultasi(); // ✅ Fetch ulang setelah kembali
+                                  },
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
+                  ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// Halaman Daftar Bidan (tambahkan di file terpisah atau di bagian bawah file ini)
-class DaftarBidanPage extends StatelessWidget {
-  const DaftarBidanPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Daftar Bidan')),
-      body: const Center(child: Text('Halaman Daftar Bidan')),
     );
   }
 }
