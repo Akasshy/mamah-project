@@ -220,14 +220,16 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
                 color: AppColors.primary,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const DaftarPasanganPage(),
                       ),
                     );
+                    _fetchKonsultasi(); // ✅ Baru dipanggil setelah halaman pasangan ditutup
                   },
+
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,

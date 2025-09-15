@@ -144,14 +144,7 @@ class _BerandaState extends State<Beranda> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      Text(
-                        'MaMaH',
-                        style: TextStyle(
-                          fontSize: 34,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.buttonBackground,
-                        ),
-                      ),
+                      Image.asset('images/real-logo.png', height: 60),
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
@@ -173,7 +166,7 @@ class _BerandaState extends State<Beranda> {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: AppColors.primary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -241,7 +234,7 @@ class _BerandaState extends State<Beranda> {
                         context,
                         'Edukasi',
                         Icons.menu_book_outlined,
-                        Colors.blue,
+                        AppColors.primary,
                         () {
                           Navigator.push(
                             context,
@@ -257,7 +250,7 @@ class _BerandaState extends State<Beranda> {
                         context,
                         'Diskusi',
                         Icons.forum_outlined,
-                        Colors.green,
+                        AppColors.primary,
                         () {
                           Navigator.push(
                             context,

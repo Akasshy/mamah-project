@@ -299,6 +299,7 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         foregroundColor: AppColors.background,
         backgroundColor: AppColors.buttonBackground,
@@ -357,7 +358,7 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
                       decoration: BoxDecoration(
                         color: isMe
                             ? AppColors.buttonBackground
-                            : Color.fromARGB(255, 207, 255, 208),
+                            : AppColors.inputFill,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
@@ -387,7 +388,7 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Expanded(
@@ -398,7 +399,7 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
                     decoration: InputDecoration(
                       hintText: _editingReplyId != null
                           ? 'Edit pesan...'
-                          : 'Tulis pesan...',
+                          : 'Ketik pesan...',
                       filled: true,
                       fillColor: Colors.grey[100],
                       border: OutlineInputBorder(
@@ -410,7 +411,7 @@ class _OpenKonsultasiState extends State<OpenKonsultasi> {
                 ),
                 const SizedBox(width: 8),
                 CircleAvatar(
-                  backgroundColor: Colors.green,
+                  backgroundColor: AppColors.primary,
                   child: IconButton(
                     icon: _isSending
                         ? const CircularProgressIndicator(color: Colors.white)

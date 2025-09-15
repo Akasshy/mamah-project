@@ -79,13 +79,14 @@ class _BerandaBidanState extends State<BerandaBidan> {
                   child: Row(
                     children: [
                       Text(
-                        'MaMaH',
+                        'MaMah',
                         style: TextStyle(
-                          fontSize: 34,
+                          fontSize: 30,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.buttonBackground,
                         ),
                       ),
+
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
@@ -107,7 +108,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 16,
-                                    color: Colors.black87,
+                                    color: AppColors.primary,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -159,7 +160,8 @@ class _BerandaBidanState extends State<BerandaBidan> {
                         context,
                         'Skrining',
                         Icons.assignment_outlined,
-                        Colors.purple,
+                        AppColors.primary,
+
                         () {
                           Navigator.push(
                             context,
@@ -191,7 +193,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
                         context,
                         'Diskusi',
                         Icons.forum_outlined,
-                        Colors.green,
+                        AppColors.primary,
                         () {
                           Navigator.push(
                             context,
@@ -207,7 +209,8 @@ class _BerandaBidanState extends State<BerandaBidan> {
                         context,
                         'Konsultasi',
                         Icons.chat_outlined,
-                        Colors.orange,
+                        AppColors.primary,
+
                         () {
                           Navigator.push(
                             context,
@@ -219,21 +222,6 @@ class _BerandaBidanState extends State<BerandaBidan> {
                         },
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => NotifikasiPage()),
-                    );
-                  },
-                  child: _buildCardTemplate(
-                    title: 'Ringkasan Notifikasi',
-                    content: 'Anda memiliki 2 notifikasi baru.',
-                    icon: Icons.notifications,
-                    color: Colors.blue[100],
                   ),
                 ),
                 const SizedBox(height: 16),

@@ -3,7 +3,7 @@ import 'package:health_app/app_colors.dart';
 import 'package:health_app/ip_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'loginPage.dart';
-// import 'package:flutter/services.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -84,7 +84,10 @@ class _ProfilePageState extends State<ProfilePage>
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memilih gambar: ${e.toString()}')),
+        SnackBar(
+          content: Text('Gagal memilih gambar: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -161,9 +164,12 @@ class _ProfilePageState extends State<ProfilePage>
         });
       } else {
         // Handle error
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal memuat profil')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat profil'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -219,7 +225,10 @@ class _ProfilePageState extends State<ProfilePage>
           final res = await http.Response.fromStream(response);
           print('Gagal update: ${res.body}');
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gagal memperbarui profil')),
+            const SnackBar(
+              content: Text('Gagal memperbarui profil'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
@@ -241,10 +250,10 @@ class _ProfilePageState extends State<ProfilePage>
       padding: const EdgeInsets.only(bottom: 12, top: 8),
       child: Text(
         title,
-        style: TextStyle(
+        style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: Colors.grey[700],
+          color: AppColors.primaryTextColor, // ✅ warna judul pakai warna brand
         ),
       ),
     );
@@ -259,6 +268,7 @@ class _ProfilePageState extends State<ProfilePage>
     TextInputType keyboardType = TextInputType.text,
     bool readOnly = false,
     GestureTapCallback? onTap,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -267,7 +277,9 @@ class _ProfilePageState extends State<ProfilePage>
         boxShadow: [
           if (!readOnly)
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: AppColors.primary.withOpacity(
+                0.08,
+              ), // ✅ bayangan biru lembut
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -280,23 +292,29 @@ class _ProfilePageState extends State<ProfilePage>
         validator: validator,
         readOnly: readOnly,
         onTap: onTap,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(
-            color: Colors.grey[600],
+          labelStyle: const TextStyle(
+            color: AppColors.secondaryTextColor,
             fontWeight: FontWeight.w500,
           ),
           filled: true,
-          fillColor: readOnly ? Colors.grey[50] : Colors.white,
+          fillColor: readOnly
+              ? AppColors.inputFill.withOpacity(0.3)
+              : AppColors.inputFill,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
+            borderSide: const BorderSide(
+              color: AppColors.inputBorder, // ✅ warna border normal
+              width: 1.5,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
-              color: AppColors.buttonBackground,
-              width: 1.5,
+              color: AppColors.inputBorderFocused, // ✅ warna border fokus
+              width: 2,
             ),
           ),
           suffixIcon: suffixIcon,
@@ -307,7 +325,9 @@ class _ProfilePageState extends State<ProfilePage>
         ),
         style: TextStyle(
           fontSize: 15,
-          color: readOnly ? Colors.grey[700] : Colors.black,
+          color: readOnly
+              ? AppColors.secondaryTextColor
+              : AppColors.primaryTextColor,
         ),
       ),
     );
@@ -332,49 +352,87 @@ class _ProfilePageState extends State<ProfilePage>
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(
-                child: Text(
-                  'Konfirmasi Logout',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Keluar',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Kamu yakin ingin keluar dari akunmu?',
+                style: TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Apakah kamu yakin ingin keluar dari akun?',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.buttonBackground,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Kamu akan keluar dari akun ini. Namun, kamu selalu dapat masuk kembali untuk mendapatkan akses penuh.',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
                       ),
                     ),
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.white),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Tombol aksi
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Batal'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Colors.grey),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'Keluar',
+                        style: TextStyle(color: Colors.black),
+                      ),
                     ),
                   ),
                 ],
               ),
+
+              const SizedBox(height: 16), // Tambahan space di bawah
             ],
           ),
         );
@@ -542,6 +600,10 @@ class _ProfilePageState extends State<ProfilePage>
                           label: 'Nomor HP',
                           keyboardType: TextInputType.phone,
                           readOnly: !_isEditing,
+                          inputFormatters: [
+                            FilteringTextInputFormatter
+                                .digitsOnly, // ✅ Hanya angka
+                          ],
                           validator: (value) => value == null || value.isEmpty
                               ? 'Nomor HP harus diisi'
                               : null,

@@ -125,7 +125,7 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                Image.asset('images/mamah-logo.png', height: 150),
+                Image.asset('images/real-logo.png', height: 150),
                 const SizedBox(height: 40),
                 TextField(
                   controller: emailController,
@@ -279,7 +279,7 @@ class _LoginPageState extends State<LoginPage> {
                             text: 'Daftar',
                             style: const TextStyle(
                               fontSize: 16,
-                              color: AppColors.linkColor,
+                              color: Color(0xFF5199CB),
                               fontWeight: FontWeight.bold,
                             ),
                             recognizer: TapGestureRecognizer()

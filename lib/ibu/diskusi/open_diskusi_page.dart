@@ -350,7 +350,7 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                       decoration: BoxDecoration(
                         color: isMe
                             ? AppColors.buttonBackground
-                            : const Color.fromARGB(255, 207, 255, 208),
+                            : AppColors.inputFill,
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
                           topRight: const Radius.circular(16),
@@ -442,7 +442,7 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                   color: AppColors.inputFill,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.group, color: Colors.green),
+                child: const Icon(Icons.group, color: AppColors.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -528,17 +528,8 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                   ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(color: Colors.white),
             child: Row(
               children: [
                 Expanded(
@@ -570,10 +561,10 @@ class _OpenDiskusiState extends State<OpenDiskusi> {
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.green,
+                    color: AppColors.buttonBackground,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
+                        color: AppColors.primary.withOpacity(0.3),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),

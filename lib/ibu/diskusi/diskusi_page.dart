@@ -84,12 +84,8 @@ class _DiskusiPageState extends State<DiskusiPage> {
           _allGroups = groups;
           _filteredGroups = List.from(groups)
             ..sort((a, b) {
-              final aIsOwner =
-                  a['creator'] != null &&
-                  a['creator']['id'].toString() == _currentUserId;
-              final bIsOwner =
-                  b['creator'] != null &&
-                  b['creator']['id'].toString() == _currentUserId;
+              final aIsOwner = a['creator']?['id'].toString() == _currentUserId;
+              final bIsOwner = b['creator']?['id'].toString() == _currentUserId;
 
               if (aIsOwner && !bIsOwner) return -1;
               if (!aIsOwner && bIsOwner) return 1;
@@ -150,7 +146,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             ? 'Anda'
             : m['user']['name'];
 
-        if (!mounted) return; // <-- Tambahkan ini
+        if (!mounted) return;
         setState(() {
           _lastMessages[groupId] = {'sender': senderName, 'text': m['message']};
         });
@@ -180,7 +176,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.primary,
           ),
         );
         _fetchGroups();
@@ -231,8 +227,8 @@ class _DiskusiPageState extends State<DiskusiPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.buttonBackground.withOpacity(0.9),
-                    AppColors.buttonBackground.withOpacity(0.7),
+                    AppColors.primary.withOpacity(0.9),
+                    AppColors.primary.withOpacity(0.7),
                   ],
                 ),
                 boxShadow: [
@@ -272,24 +268,18 @@ class _DiskusiPageState extends State<DiskusiPage> {
               padding: const EdgeInsets.all(16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.primary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Cari grup diskusi...',
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.buttonBackground,
+                    hintStyle: TextStyle(
+                      color: AppColors.primary.withOpacity(0.7),
                     ),
+                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 16,
@@ -328,7 +318,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
           ],
         ),
         floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: AppColors.buttonBackground,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -347,16 +337,13 @@ class _DiskusiPageState extends State<DiskusiPage> {
     );
   }
 
-  // Replace the existing _buildContent method with this new version
   Widget _buildContent(ThemeData theme) {
     if (_isLoading) {
       return ListView.separated(
         padding: const EdgeInsets.only(top: 8, bottom: 100),
-        itemCount: 6, // Number of skeleton items to show
+        itemCount: 6,
         separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          return _buildSkeletonItem();
-        },
+        itemBuilder: (context, index) => _buildSkeletonItem(),
       );
     }
 
@@ -375,7 +362,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.buttonBackground,
+                backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -393,12 +380,6 @@ class _DiskusiPageState extends State<DiskusiPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Image.asset(
-            //   'assets/images/empty_group.png', // Replace with your asset
-            //   width: 150,
-            //   height: 150,
-            //   color: Colors.grey[300],
-            // ),
             const SizedBox(height: 16),
             Text(
               _searchController.text.isEmpty
@@ -428,9 +409,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
         final description = group['description'] ?? '';
         final groupId = group['id'];
         final last = _lastMessages[groupId];
-        final isOwner =
-            group['creator'] != null &&
-            group['creator']['id'].toString() == _currentUserId;
+        final isOwner = group['creator']?['id'].toString() == _currentUserId;
 
         return InkWell(
           onTap: () {
@@ -447,7 +426,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             decoration: BoxDecoration(
               color: _isHovering[index]
-                  ? AppColors.inputFill.withOpacity(0.5)
+                  ? AppColors.primary.withOpacity(0.05)
                   : Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -459,12 +438,12 @@ class _DiskusiPageState extends State<DiskusiPage> {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: AppColors.buttonBackground.withOpacity(0.1),
+                      color: AppColors.primary.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.groups,
-                      color: AppColors.buttonBackground,
+                      color: AppColors.primary,
                       size: 28,
                     ),
                   ),
@@ -492,15 +471,13 @@ class _DiskusiPageState extends State<DiskusiPage> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.buttonBackground.withOpacity(
-                                    0.2,
-                                  ),
+                                  color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   'Milik Anda',
                                   style: theme.textTheme.labelSmall?.copyWith(
-                                    color: AppColors.buttonBackground,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -518,26 +495,33 @@ class _DiskusiPageState extends State<DiskusiPage> {
                         ),
                         if (last != null) ...[
                           const SizedBox(height: 4),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: '${last['sender']}: ',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppColors.buttonBackground,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: last['text'],
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${last['sender']}: ',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: last['text'],
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ],
@@ -552,7 +536,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                           value: 'edit',
                           child: Row(
                             children: [
-                              Icon(Icons.edit, color: theme.primaryColor),
+                              Icon(Icons.edit, color: AppColors.primary),
                               const SizedBox(width: 8),
                               const Text('Edit Grup'),
                             ],
@@ -582,108 +566,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                             ),
                           ).then((_) => _fetchGroups());
                         } else if (value == 'delete') {
-                          showModalBottomSheet(
-                            context: context,
-                            isDismissible: true,
-                            shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(24),
-                              ),
-                            ),
-                            backgroundColor: Colors.white,
-                            builder: (context) {
-                              return Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  24,
-                                  32,
-                                  24,
-                                  32,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.warning_amber_rounded,
-                                      size: 48,
-                                      color: Colors.red[400],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      'Hapus Grup?',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'Seluruh grup dan pesan di dalamnya akan dihapus secara permanen. Apakah kamu yakin ingin melanjutkan?',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 28),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            style: OutlinedButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 14,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              side: BorderSide(
-                                                color: Colors.grey.shade300,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Batal',
-                                              style: TextStyle(fontSize: 16),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              _deleteGroup(groupId);
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 14,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Hapus',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          );
+                          _showDeleteDialog(groupId);
                         }
                       },
                     ),
@@ -696,7 +579,84 @@ class _DiskusiPageState extends State<DiskusiPage> {
     );
   }
 
-  // Add this new method for skeleton loading items
+  void _showDeleteDialog(int groupId) {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 48,
+                color: Colors.red[400],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hapus Grup?',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Seluruh grup dan pesan di dalamnya akan dihapus secara permanen. Apakah kamu yakin ingin melanjutkan?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      child: const Text(
+                        'Batal',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteGroup(groupId);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Hapus',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSkeletonItem() {
     return Padding(
       padding: const EdgeInsets.all(12),

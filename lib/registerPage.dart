@@ -79,7 +79,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 'Registrasi berhasil! Melanjutkan...',
                 style: TextStyle(color: Colors.white),
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.buttonBackground,
               duration: Duration(seconds: 2),
             ),
           );
@@ -136,7 +136,7 @@ class _RegisterPageState extends State<RegisterPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  Image.asset('images/mamah-logo.png', height: 150),
+                  Image.asset('images/real-logo.png', height: 150),
                   const SizedBox(height: 30),
                   TextFormField(
                     controller: nameController,
@@ -254,16 +254,13 @@ class _RegisterPageState extends State<RegisterPage> {
       labelText: label,
       filled: true,
       fillColor: AppColors.inputFill,
-      border: OutlineInputBorder(
+      enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: AppColors.inputBorder, width: 2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: AppColors.inputBorderFocused,
-          width: 2,
-        ),
+        borderSide: BorderSide(color: AppColors.inputBorderFocused, width: 2),
       ),
     );
   }

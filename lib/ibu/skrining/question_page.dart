@@ -48,7 +48,49 @@ class _QuestionPageState extends State<QuestionPage> {
     }
   }
 
+  // Future<void> submitAnswers() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final token = prefs.getString('token');
+
+  //   final answers = selectedAnswers.entries.map((e) {
+  //     final qId = questions[e.key].id;
+  //     final score = questions[e.key].choices[e.value].score;
+  //     return {'question_id': qId, 'choice_score': score};
+  //   }).toList();
+
+  //   final res = await http.post(
+  //     Uri.parse('$baseUrl/api/screening/submit'),
+  //     headers: {
+  //       'Authorization': 'Bearer $token',
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: jsonEncode({'answers': answers}),
+  //   );
+
+  //   if (res.statusCode == 200 || res.statusCode == 201) {
+  //     final result = jsonDecode(res.body)['result'];
+  //     final totalScore = result['score'];
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder: (_) => ScreeningResultPage(score: totalScore),
+  //       ),
+  //     );
+  //   }
+  // }
+  bool isSubmitting = false;
+
   Future<void> submitAnswers() async {
+    if (isSubmitting) return;
+    setState(() => isSubmitting = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: Colors.green)),
+    );
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -67,20 +109,44 @@ class _QuestionPageState extends State<QuestionPage> {
       body: jsonEncode({'answers': answers}),
     );
 
+    print('Status Code: ${res.statusCode}');
+    print('Body: ${res.body}');
+
+    Navigator.of(context).pop(); // Tutup loading dialog
+    setState(() => isSubmitting = false);
+
     if (res.statusCode == 200 || res.statusCode == 201) {
       final result = jsonDecode(res.body)['result'];
       final totalScore = result['score'];
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ScreeningResultPage(score: totalScore),
-        ),
-      );
+      final category = result['category'];
+      final recommendation = result['recommendation'];
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ScreeningResultPage(
+              score: totalScore,
+              category: category,
+              recommendation: recommendation,
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim hasil skrining')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // if (isSubmitting) {
+    //   return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    // }
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -110,30 +176,30 @@ class _QuestionPageState extends State<QuestionPage> {
           : Column(
               children: [
                 // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.blue[50],
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.health_and_safety,
-                        size: 50,
-                        color: Colors.blue,
-                      ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          'Mari periksa kesehatan mental Anda hari ini',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Container(
+                //   padding: const EdgeInsets.all(16),
+                //   color: Colors.blue[50],
+                //   child: const Row(
+                //     children: [
+                //       Icon(
+                //         Icons.health_and_safety,
+                //         size: 50,
+                //         color: Colors.blue,
+                //       ),
+                //       SizedBox(width: 16),
+                //       Expanded(
+                //         child: Text(
+                //           'Mari periksa kesehatan mental Anda hari ini',
+                //           style: TextStyle(
+                //             fontSize: 16,
+                //             fontWeight: FontWeight.w500,
+                //             color: Colors.blue,
+                //           ),
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
 
                 // Progress indicator
                 TweenAnimationBuilder(
@@ -294,33 +360,41 @@ class _QuestionPageState extends State<QuestionPage> {
                           child: const Text('Kembali'),
                         ),
                       const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: selectedAnswers[currentQuestionIndex] == null
-                            ? null
-                            : () {
-                                if (currentQuestionIndex <
-                                    questions.length - 1) {
-                                  _pageController.nextPage(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                  );
-                                } else {
-                                  submitAnswers();
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.buttonBackground,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: 20,
+                        ), // jarak bawah tombol
+                        child: ElevatedButton(
+                          onPressed:
+                              selectedAnswers[currentQuestionIndex] == null
+                              ? null
+                              : () {
+                                  if (currentQuestionIndex <
+                                      questions.length - 1) {
+                                    _pageController.nextPage(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                    );
+                                  } else {
+                                    submitAnswers();
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.buttonBackground,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          currentQuestionIndex < questions.length - 1
-                              ? 'Lanjut ke Pertanyaan ${currentQuestionIndex + 2}'
-                              : 'Lihat Hasil Skrining',
-                          style: const TextStyle(fontSize: 16),
+                          child: Text(
+                            currentQuestionIndex < questions.length - 1
+                                ? 'Lanjut ke Pertanyaan ${currentQuestionIndex + 2}'
+                                : 'Lihat Hasil Skrining',
+                            style: const TextStyle(fontSize: 16),
+                          ),
                         ),
                       ),
                     ],
@@ -328,6 +402,39 @@ class _QuestionPageState extends State<QuestionPage> {
                 ),
               ],
             ),
+    );
+  }
+}
+// --- Model Class: Question dan Choice ---
+
+class Question {
+  final int id;
+  final String text;
+  final List<Choice> choices;
+
+  Question({required this.id, required this.text, required this.choices});
+
+  factory Question.fromJson(Map<String, dynamic> json) {
+    return Question(
+      id: json['id'],
+      text: json['question_text'],
+      choices: (json['choices'] as List)
+          .map((c) => Choice.fromJson(c))
+          .toList(),
+    );
+  }
+}
+
+class Choice {
+  final String text;
+  final int score;
+
+  Choice({required this.text, required this.score});
+
+  factory Choice.fromJson(Map<String, dynamic> json) {
+    return Choice(
+      text: json['label'].toString(),
+      score: int.tryParse(json['score'].toString()) ?? 0,
     );
   }
 }
@@ -408,53 +515,46 @@ class ChoiceCard extends StatelessWidget {
 
 class ScreeningResultPage extends StatelessWidget {
   final int score;
+  final String category;
+  final String recommendation;
 
-  const ScreeningResultPage({super.key, required this.score});
-
-  String getCategory() {
-    if (score <= 9) return 'Rendah';
-    if (score <= 12) return 'Sedang';
-    return 'Tinggi';
-  }
+  const ScreeningResultPage({
+    super.key,
+    required this.score,
+    required this.category,
+    required this.recommendation,
+  });
 
   Color getCategoryColor() {
-    if (score <= 9) return Colors.green;
-    if (score <= 12) return Colors.orange;
-    return Colors.red;
-  }
-
-  IconData getCategoryIcon() {
-    if (score <= 9) return Icons.sentiment_satisfied_alt;
-    if (score <= 12) return Icons.sentiment_neutral;
-    return Icons.sentiment_very_dissatisfied;
-  }
-
-  String getRecommendation() {
-    if (score <= 9) {
-      return 'Skor Anda menunjukkan risiko rendah. Tetap jaga kesehatan mental Anda dengan:\n\n'
-          '• Pola tidur yang cukup\n'
-          '• Makan makanan bergizi\n'
-          '• Berbagi perasaan dengan orang terdekat\n'
-          '• Melakukan aktivitas menyenangkan';
-    } else if (score <= 12) {
-      return 'Skor Anda menunjukkan risiko sedang. Kami menyarankan Anda untuk:\n\n'
-          '• Berkonsultasi dengan bidan/konselor\n'
-          '• Bergabung dengan support group ibu\n'
-          '• Mencatat perubahan mood harian\n'
-          '• Tidak ragu meminta bantuan';
-    } else {
-      return 'Skor Anda menunjukkan risiko tinggi. Segera:\n\n'
-          '1. Hubungi bidan/konselor terdekat\n'
-          '2. Ceritakan kondisi Anda pada keluarga\n'
-          '3. Hindari menyendiri terlalu lama\n'
-          '4. Gunakan layanan darurat jika diperlukan';
+    switch (category.toLowerCase()) {
+      case 'rendah':
+        return Colors.green;
+      case 'sedang':
+        return Colors.orange;
+      case 'tinggi':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
+  IconData getCategoryIcon() {
+    switch (category.toLowerCase()) {
+      case 'rendah':
+        return Icons.sentiment_satisfied_alt;
+      case 'sedang':
+        return Icons.sentiment_neutral;
+      case 'tinggi':
+        return Icons.sentiment_very_dissatisfied;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  bool get showConsultButton => category.toLowerCase() == 'tinggi';
+
   @override
   Widget build(BuildContext context) {
-    bool showConsultButton = getCategory() == 'Tinggi';
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -470,7 +570,6 @@ class ScreeningResultPage extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           children: [
-            // Header
             Column(
               children: [
                 Container(
@@ -491,7 +590,7 @@ class ScreeningResultPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        getCategory(),
+                        category,
                         style: TextStyle(
                           color: getCategoryColor(),
                           fontWeight: FontWeight.bold,
@@ -518,8 +617,6 @@ class ScreeningResultPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 32),
-
-            // Score Card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -560,15 +657,13 @@ class ScreeningResultPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Kategori: ${getCategory()}',
+                    'Kategori: $category',
                     style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // Recommendation
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -600,18 +695,25 @@ class ScreeningResultPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    getRecommendation(),
-                    style: const TextStyle(fontSize: 15, height: 1.6),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: recommendation
+                        .split('\n')
+                        .map(
+                          (line) => Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              line,
+                              style: const TextStyle(fontSize: 15, height: 1.5),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // Emergency contacts for high risk
-
-            // Action Buttons
             Column(
               children: [
                 if (showConsultButton)
@@ -670,63 +772,6 @@ class ScreeningResultPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildEmergencyContact(String title, String number, IconData icon) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.red[100],
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.red),
-      ),
-      title: Text(title),
-      subtitle: Text(number),
-      trailing: IconButton(
-        icon: const Icon(Icons.phone, color: Colors.green),
-        onPressed: () => launchUrl(Uri.parse('tel:$number')),
-      ),
-    );
-  }
-}
-
-class Question {
-  final int id;
-  final String text;
-  final List<Choice> choices;
-
-  Question({required this.id, required this.text, required this.choices});
-
-  factory Question.fromJson(Map<String, dynamic> json) {
-    return Question(
-      id: json['id'],
-      text: json['question_text'],
-      choices: (json['choices'] as List)
-          .map((c) => Choice.fromJson(c))
-          .toList(),
-    );
-  }
-}
-
-class Choice {
-  final String text;
-  final int score;
-
-  Choice({required this.text, required this.score});
-
-  factory Choice.fromJson(Map<String, dynamic> json) {
-    if (json['label'] == null || json['score'] == null) {
-      throw Exception("Data Choice tidak valid: $json");
-    }
-
-    return Choice(
-      text: json['label'].toString(),
-      score: int.tryParse(json['score'].toString()) ?? 0,
     );
   }
 }

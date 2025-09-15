@@ -228,18 +228,20 @@ class _EdukasiPageState extends State<EdukasiPage> {
                                             height: double.infinity,
                                             fit: BoxFit.cover,
                                             errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    Container(
-                                                      color:
-                                                          AppColors.inputFill,
-                                                      child: const Center(
-                                                        child: Icon(
-                                                          Icons.image,
-                                                          color: Colors.green,
-                                                          size: 50,
-                                                        ),
-                                                      ),
+                                                (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) => Container(
+                                                  color: AppColors.inputFill,
+                                                  child: const Center(
+                                                    child: Icon(
+                                                      Icons.image,
+                                                      color: AppColors.primary,
+                                                      size: 50,
                                                     ),
+                                                  ),
+                                                ),
                                           ),
                                           Positioned(
                                             bottom: 0,
@@ -380,7 +382,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                                                     child: Icon(
                                                       Icons.image,
                                                       size: 40,
-                                                      color: Colors.green,
+                                                      color: AppColors.primary,
                                                     ),
                                                   ),
                                             ),
@@ -721,7 +723,7 @@ class DetailEdukasiPage extends StatelessWidget {
                       child: Icon(
                         Icons.image,
                         size: 60,
-                        color: Colors.grey[400],
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
