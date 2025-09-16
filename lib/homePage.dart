@@ -3,11 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/bidan/beranda_bidan.dart';
 import 'package:health_app/bidan/skrining/skrinings_bidan.dart';
+import 'package:health_app/edukasi/education_page.dart';
 import 'package:health_app/ibu/beranda/beranda_page.dart';
 import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/konsultasi/konsultasi_page.dart';
 import 'package:health_app/ibu/skrining/skrinings_page.dart';
-import 'package:health_app/ibu/edukasi_page.dart';
+// import 'package:health_app/ibu/edukasi_page.dart';
 import 'package:health_app/custom_scaffold.dart';
 
 class HomePage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _HomePageState extends State<HomePage> {
       _pages = const [
         Beranda(),
         SkriningsPage(),
-        EdukasiPage(),
+        EducationPage(),
         DiskusiPage(),
         KonsultasiPage(),
       ];
@@ -46,7 +47,7 @@ class _HomePageState extends State<HomePage> {
       _pages = const [
         BerandaBidan(),
         SkriningBidan(),
-        EdukasiPage(),
+        EducationPage(),
         DiskusiPage(),
         KonsultasiPage(),
       ];
