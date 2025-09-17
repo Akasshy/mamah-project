@@ -22,6 +22,54 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isPasswordVisible = false;
   String? _selectedRole;
+  String? _selectedVillage;
+  List<Map<String, dynamic>> _villages = [];
+  bool _isLoadingVillages = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchVillages(); // Ambil daftar desa saat halaman dibuka
+  }
+
+  // Ambil data desa/kelurahan dari API
+  Future<void> _fetchVillages() async {
+    setState(() => _isLoadingVillages = true);
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/regions'),
+        headers: {'Accept': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List regions = data['data'];
+        setState(() {
+          _villages = regions.map<Map<String, dynamic>>((item) {
+            return {'id': item['id'].toString(), 'name': item['name']};
+          }).toList();
+        });
+      } else {
+        debugPrint('Failed to fetch villages: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal mengambil daftar desa/kelurahan.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Exception while fetching villages: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan saat mengambil desa: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoadingVillages = false);
+    }
+  }
 
   Future<void> _registerUser() async {
     if (_formKey.currentState!.validate()) {
@@ -34,14 +82,17 @@ class _RegisterPageState extends State<RegisterPage> {
         );
         return;
       }
+      if (_selectedVillage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pilih desa/kelurahan terlebih dahulu!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       final roleToSend = _selectedRole!.toLowerCase().trim();
-
-      debugPrint('Data yang dikirim ke API:');
-      debugPrint('Name: ${nameController.text.trim()}');
-      debugPrint('Email: ${emailController.text.trim()}');
-      debugPrint('Password: ${passwordController.text}');
-      debugPrint('Role: $roleToSend');
 
       final loadingBar = SnackBar(
         duration: const Duration(minutes: 1),
@@ -65,6 +116,7 @@ class _RegisterPageState extends State<RegisterPage> {
             'email': emailController.text.trim(),
             'password': passwordController.text,
             'role': roleToSend,
+            'village_id': _selectedVillage!,
           },
         );
 
@@ -103,7 +155,6 @@ class _RegisterPageState extends State<RegisterPage> {
           );
         } else {
           final error = json.decode(response.body);
-          debugPrint('API Error: $error');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(error['message'] ?? 'Registrasi gagal'),
@@ -112,7 +163,6 @@ class _RegisterPageState extends State<RegisterPage> {
           );
         }
       } catch (e) {
-        debugPrint('Exception: $e');
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -131,115 +181,155 @@ class _RegisterPageState extends State<RegisterPage> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Image.asset('images/real-logo.png', height: 150),
-                  const SizedBox(height: 30),
-                  TextFormField(
-                    controller: nameController,
-                    decoration: _inputDecoration('Nama Lengkap', Icons.person),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Nama tidak boleh kosong' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: emailController,
-                    decoration: _inputDecoration('Email', Icons.email),
-                    validator: (value) {
-                      if (value!.isEmpty) return 'Email tidak boleh kosong';
-                      if (!RegExp(
-                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      ).hasMatch(value)) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: passwordController,
-                    obscureText: !_isPasswordVisible,
-                    decoration: _inputDecoration('Kata Sandi', Icons.lock)
-                        .copyWith(
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: AppColors.iconColor,
-                            ),
-                            onPressed: () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible,
+          child: RefreshIndicator(
+            // <-- Tambahkan ini
+            onRefresh: _fetchVillages, // Fungsi yang dijalankan saat refresh
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    Image.asset('images/real-logo.png', height: 150),
+                    const SizedBox(height: 30),
+                    TextFormField(
+                      controller: nameController,
+                      decoration: _inputDecoration(
+                        'Nama Lengkap',
+                        Icons.person,
+                      ),
+                      validator: (value) =>
+                          value!.isEmpty ? 'Nama tidak boleh kosong' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: emailController,
+                      decoration: _inputDecoration('Email', Icons.email),
+                      validator: (value) {
+                        if (value!.isEmpty) return 'Email tidak boleh kosong';
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value)) {
+                          return 'Format email tidak valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: passwordController,
+                      obscureText: !_isPasswordVisible,
+                      decoration: _inputDecoration('Kata Sandi', Icons.lock)
+                          .copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: AppColors.iconColor,
+                              ),
+                              onPressed: () => setState(
+                                () => _isPasswordVisible = !_isPasswordVisible,
+                              ),
                             ),
                           ),
-                        ),
-                    validator: (value) =>
-                        value!.length < 6 ? 'Minimal 6 karakter' : null,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // PILIH ROLE
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _RoleCard(
-                          title: 'Ibu',
-                          imagePath: 'images/ibu.png',
-                          selected: _selectedRole == 'ibu',
-                          onTap: () => setState(() => _selectedRole = 'ibu'),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _RoleCard(
-                          title: 'Bidan',
-                          imagePath: 'images/bidan.png',
-                          selected: _selectedRole == 'bidan',
-                          onTap: () => setState(() => _selectedRole = 'bidan'),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  ElevatedButton(
-                    onPressed: _registerUser,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.buttonBackground,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      validator: (value) =>
+                          value!.length < 6 ? 'Minimal 6 karakter' : null,
                     ),
-                    child: const Text(
-                      'Daftar',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                  RichText(
-                    text: TextSpan(
-                      style: const TextStyle(color: AppColors.labelText),
+                    // Dropdown Desa/Kelurahan
+                    _isLoadingVillages
+                        ? const CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            value: _selectedVillage,
+                            isExpanded:
+                                true, // <-- penting agar teks tidak mepet ke tepi
+                            items: _villages
+                                .map(
+                                  (v) => DropdownMenuItem<String>(
+                                    value: v['id'],
+                                    child: Text(v['name']),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) =>
+                                setState(() => _selectedVillage = value),
+                            decoration: _inputDecoration(
+                              'Desa/Kelurahan',
+                              Icons.map,
+                            ),
+                            validator: (value) =>
+                                value == null ? 'Pilih desa/kelurahan' : null,
+                          ),
+
+                    const SizedBox(height: 24),
+
+                    // PILIH ROLE
+                    Row(
                       children: [
-                        const TextSpan(text: 'Sudah punya akun? '),
-                        TextSpan(
-                          text: 'Login',
-                          style: const TextStyle(
-                            color: AppColors.linkColor,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: _RoleCard(
+                            title: 'Ibu',
+                            imagePath: 'images/ibu.png',
+                            selected: _selectedRole == 'ibu',
+                            onTap: () => setState(() => _selectedRole = 'ibu'),
                           ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => Navigator.pop(context),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _RoleCard(
+                            title: 'Bidan',
+                            imagePath: 'images/bidan.png',
+                            selected: _selectedRole == 'bidan',
+                            onTap: () =>
+                                setState(() => _selectedRole = 'bidan'),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 30),
+
+                    ElevatedButton(
+                      onPressed: _registerUser,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonBackground,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        'Daftar',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(color: AppColors.labelText),
+                        children: [
+                          const TextSpan(text: 'Sudah punya akun? '),
+                          TextSpan(
+                            text: 'Login',
+                            style: const TextStyle(
+                              color: AppColors.linkColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
