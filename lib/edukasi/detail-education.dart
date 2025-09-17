@@ -5,10 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EducationDetailPage extends StatefulWidget {
   final int id;
-  const EducationDetailPage({Key? key, required this.id}) : super(key: key);
+  const EducationDetailPage({super.key, required this.id});
 
   @override
   State<EducationDetailPage> createState() => _EducationDetailPageState();
@@ -22,6 +23,15 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
+  }
+
+  /// Ganti 127.0.0.1 dengan baseUrl jika ada
+  String getValidUrl(String url) {
+    if (url.contains('127.0.0.1')) {
+      final server = baseUrl.replaceAll(RegExp(r'/$'), '');
+      return url.replaceAll('127.0.0.1', server);
+    }
+    return url;
   }
 
   Future<void> fetchDetail() async {
@@ -45,11 +55,12 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
 
   void _setupMedia() {
     if (detail == null) return;
+
+    final url = getValidUrl(detail!['file_url'] ?? '');
     final type = (detail!['media_type'] ?? '').toLowerCase();
-    final url = (detail!['file_url'] ?? '') as String;
 
     if (type == 'video') {
-      // 1. Jika YouTube
+      // 1. YouTube
       if (url.contains('youtube.com') || url.contains('youtu.be')) {
         final id = YoutubePlayer.convertUrlToId(url);
         if (id != null) {
@@ -59,21 +70,24 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
           );
         }
       }
-      // 2. Jika file mp4 atau link drive
+      // 2. Video MP4
       else if (url.endsWith('.mp4')) {
         _videoController = VideoPlayerController.network(url)
           ..initialize().then((_) => setState(() {}));
-      } else if (url.contains('drive.google.com')) {
+      }
+      // 3. Google Drive MP4
+      else if (url.contains('drive.google.com')) {
         final reg = RegExp(r'/d/([a-zA-Z0-9_-]+)');
         final match = reg.firstMatch(url);
         if (match != null) {
-          final direct =
+          final directUrl =
               'https://drive.google.com/uc?export=download&id=${match.group(1)}';
-          _videoController = VideoPlayerController.network(direct)
+          _videoController = VideoPlayerController.network(directUrl)
             ..initialize().then((_) => setState(() {}));
         }
       }
     }
+    // Untuk image tidak perlu setup controller
   }
 
   @override
@@ -89,53 +103,100 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
     super.dispose();
   }
 
+  Widget mediaWidget() {
+    if (detail == null) return Container();
+
+    final url = getValidUrl(detail!['file_url'] ?? '');
+    final type = (detail!['media_type'] ?? '').toLowerCase();
+
+    if (type == 'image') {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          height: 200,
+          color: Colors.grey[300],
+          child: const Center(child: Text('Gambar tidak tersedia')),
+        ),
+      );
+    }
+
+    if (type == 'video') {
+      // YouTube
+      if (_youtubeController != null) {
+        return AspectRatio(
+          aspectRatio: 16 / 9,
+          child: YoutubePlayer(
+            controller: _youtubeController!,
+            showVideoProgressIndicator: true,
+          ),
+        );
+      }
+      // MP4 / Google Drive
+      if (_videoController != null && _videoController!.value.isInitialized) {
+        return AspectRatio(
+          aspectRatio: _videoController!.value.aspectRatio,
+          child: VideoPlayer(_videoController!),
+        );
+      }
+      // Google Drive fallback
+      if (url.contains('drive.google.com')) {
+        return Container(
+          height: 200,
+          color: Colors.grey[300],
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () async {
+                final reg = RegExp(r'/d/([a-zA-Z0-9_-]+)');
+                final match = reg.firstMatch(url);
+                if (match != null) {
+                  final directUrl =
+                      'https://drive.google.com/uc?export=download&id=${match.group(1)}';
+                  if (await canLaunchUrl(Uri.parse(directUrl))) {
+                    await launchUrl(Uri.parse(directUrl));
+                  }
+                }
+              },
+              child: const Text('Putar Video'),
+            ),
+          ),
+        );
+      }
+
+      return Container(
+        height: 200,
+        color: Colors.grey[300],
+        child: const Center(child: Text('Video tidak tersedia')),
+      );
+    }
+
+    // fallback umum
+    return Container(
+      height: 200,
+      color: Colors.grey[300],
+      child: const Center(child: Text('Media tidak tersedia')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (detail == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final type = (detail!['media_type'] ?? '').toLowerCase();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(detail!['title'] ?? 'Detail Edukasi'),
         backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (type == 'image')
-              Image.network(detail!['file_url'])
-            else if (type == 'video')
-              _youtubeController != null
-                  ? AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: YoutubePlayer(
-                        controller: _youtubeController!,
-                        showVideoProgressIndicator: true,
-                      ),
-                    )
-                  : (_videoController != null &&
-                        _videoController!.value.isInitialized)
-                  ? AspectRatio(
-                      aspectRatio: _videoController!.value.aspectRatio,
-                      child: VideoPlayer(_videoController!),
-                    )
-                  : Container(
-                      height: 200,
-                      color: Colors.grey[300],
-                      child: const Center(child: Text('Video tidak tersedia')),
-                    )
-            else
-              Container(
-                height: 200,
-                color: Colors.grey[300],
-                child: const Center(child: Text('Media tidak tersedia')),
-              ),
+            mediaWidget(),
             const SizedBox(height: 16),
             Text(
               detail!['description'] ?? '',
