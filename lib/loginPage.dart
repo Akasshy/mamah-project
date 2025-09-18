@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
     checkLoginStatus();
   }
 
-  // ✅ Fungsi untuk reset form login
+  // Fungsi untuk reset form login
   void resetForm() {
     emailController.clear();
     passwordController.clear();
@@ -125,8 +125,16 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                Image.asset('images/real-logo.png', height: 150),
-                const SizedBox(height: 40),
+                Image.asset('images/mamah.png', height: 150),
+                Text(
+                  'MaMah',
+                  style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.labelText,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,

@@ -194,7 +194,15 @@ class _RegisterPageState extends State<RegisterPage> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    Image.asset('images/real-logo.png', height: 150),
+                    Image.asset('images/mamah.png', height: 150),
+                    Text(
+                      'MaMah',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.labelText,
+                      ),
+                    ),
                     const SizedBox(height: 30),
                     TextFormField(
                       controller: nameController,
@@ -243,29 +251,24 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16),
 
                     // Dropdown Desa/Kelurahan
-                    _isLoadingVillages
-                        ? const CircularProgressIndicator()
-                        : DropdownButtonFormField<String>(
-                            value: _selectedVillage,
-                            isExpanded:
-                                true, // <-- penting agar teks tidak mepet ke tepi
-                            items: _villages
-                                .map(
-                                  (v) => DropdownMenuItem<String>(
-                                    value: v['id'],
-                                    child: Text(v['name']),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) =>
-                                setState(() => _selectedVillage = value),
-                            decoration: _inputDecoration(
-                              'Desa/Kelurahan',
-                              Icons.map,
+                    DropdownButtonFormField<String>(
+                      value: _selectedVillage,
+                      isExpanded:
+                          true, // <-- penting agar teks tidak mepet ke tepi
+                      items: _villages
+                          .map(
+                            (v) => DropdownMenuItem<String>(
+                              value: v['id'],
+                              child: Text(v['name']),
                             ),
-                            validator: (value) =>
-                                value == null ? 'Pilih desa/kelurahan' : null,
-                          ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedVillage = value),
+                      decoration: _inputDecoration('Desa/Kelurahan', Icons.map),
+                      validator: (value) =>
+                          value == null ? 'Pilih desa/kelurahan' : null,
+                    ),
 
                     const SizedBox(height: 24),
 

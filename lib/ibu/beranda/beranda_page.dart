@@ -9,6 +9,7 @@ import 'package:health_app/profile.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+// ignore: unused_import
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class Beranda extends StatefulWidget {
@@ -144,7 +145,7 @@ class _BerandaState extends State<Beranda> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      Image.asset('images/real-logo.png', height: 60),
+                      Image.asset('images/mamah.png', height: 60),
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
@@ -207,30 +208,30 @@ class _BerandaState extends State<Beranda> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Menu Horizontal Compact
-                SizedBox(
-                  height: 100,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      _buildMenuCard(
+                // Menu 4 item menyesuaikan lebar perangkat
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: _buildMenuCard(
                         context,
-                        'Skrining',
-                        Icons.assignment_outlined,
+                        'Relaksasi',
+                        Icons.self_improvement_outlined,
                         AppColors.primary,
                         () {
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const HomePage(initialIndex: 1, role: 'ibu'),
+                                  const HomePage(initialIndex: 0, role: 'ibu'),
                             ),
                           );
                         },
                       ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildMenuCard(
                         context,
                         'Edukasi',
                         Icons.menu_book_outlined,
@@ -240,13 +241,33 @@ class _BerandaState extends State<Beranda> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
+                                  const HomePage(initialIndex: 1, role: 'ibu'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildMenuCard(
+                        context,
+                        'Skrining',
+                        Icons.assignment_outlined,
+                        AppColors.primary,
+                        () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
                                   const HomePage(initialIndex: 2, role: 'ibu'),
                             ),
                           );
                         },
                       ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildMenuCard(
                         context,
                         'Diskusi',
                         Icons.forum_outlined,
@@ -261,24 +282,8 @@ class _BerandaState extends State<Beranda> {
                           );
                         },
                       ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
-                        context,
-                        'Konsultasi',
-                        Icons.chat_outlined,
-                        Colors.orange,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const HomePage(initialIndex: 4, role: 'ibu'),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.4),
 
                 const SizedBox(height: 16),
@@ -297,13 +302,7 @@ class _BerandaState extends State<Beranda> {
                     );
                   },
                 ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
-                const SizedBox(height: 16),
-                _buildTipsCard(
-                  'Tips Hari Ini',
-                  tipsHariIni,
-                  Icons.lightbulb_outline,
-                  Colors.orange.withOpacity(0.8),
-                ).animate().fadeIn(duration: 900.ms).slideX(begin: -0.1),
+
                 const SizedBox(height: 16),
                 _buildInfoCard(
                   'Artikel Terbaru',
