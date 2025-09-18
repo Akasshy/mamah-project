@@ -71,7 +71,7 @@ class CustomScaffold extends StatelessWidget {
               Icons.menu_book,
               'Edukasi',
             ),
-            _buildBottomNavItem(Icons.forum_outlined, Icons.forum, 'Diskusi'),
+            // _buildBottomNavItem(Icons.forum_outlined, Icons.forum, 'Diskusi'),
             _buildBottomNavItem(
               Icons.chat_outlined,
               Icons.chat,
