@@ -23,6 +23,7 @@ dependencies:
   video_player: ^2.8.2
   flutter_inappwebview: ^6.0.0
   dropdown_search: ^6.0.2
+  iconsax: ^0.0.8
 
 dev_dependencies:
   flutter_test:

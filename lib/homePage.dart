@@ -8,7 +8,6 @@ import 'package:health_app/ibu/beranda/beranda_page.dart';
 import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/konsultasi/konsultasi_page.dart';
 import 'package:health_app/ibu/skrining/skrinings_page.dart';
-// import 'package:health_app/ibu/edukasi_page.dart';
 import 'package:health_app/custom_scaffold.dart';
 
 class HomePage extends StatefulWidget {
@@ -40,16 +39,16 @@ class _HomePageState extends State<HomePage> {
         Beranda(),
         SkriningsPage(),
         EducationPage(),
-        DiskusiPage(),
         KonsultasiPage(),
+        // DiskusiPage(),
       ];
     } else if (widget.role == 'bidan') {
       _pages = const [
         BerandaBidan(),
         SkriningBidan(),
         EducationPage(),
-        DiskusiPage(),
         KonsultasiPage(),
+        // DiskusiPage(),
       ];
     } else {
       _pages = [

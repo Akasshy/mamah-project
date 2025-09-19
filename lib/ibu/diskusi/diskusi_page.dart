@@ -242,18 +242,32 @@ class _DiskusiPageState extends State<DiskusiPage> {
               padding: const EdgeInsets.only(
                 top: 50,
                 bottom: 20,
-                left: 24,
+                left:
+                    12, // sedikit lebih kecil agar tombol back tidak terlalu jauh
                 right: 24,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Forum Diskusi',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () {
+                          Navigator.pop(
+                            context,
+                          ); // kembali ke halaman sebelumnya
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Forum Diskusi',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh, color: Colors.white),

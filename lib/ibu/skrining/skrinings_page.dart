@@ -178,7 +178,7 @@ class _SkriningsPageState extends State<SkriningsPage> {
   Widget _buildHasilSkorCard(bool showConsultButton) {
     return Card(
       color: AppColors.inputFill,
-      elevation: 4,
+      elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       shadowColor: Colors.black.withOpacity(0.1),
       child: Padding(
@@ -199,7 +199,7 @@ class _SkriningsPageState extends State<SkriningsPage> {
                     ),
                   const SizedBox(height: 20),
                   Container(
-                    width: 80,
+                    width: double.infinity,
                     height: 80,
                     decoration: BoxDecoration(
                       color: _getCategoryColor(kategori).withOpacity(0.2),

@@ -136,13 +136,21 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
 
     final response = await request.send();
 
+    // Convert StreamedResponse -> Response biasa
+    final responseBody = await http.Response.fromStream(response);
+
     setState(() {
       isLoading = false;
     });
 
-    if (response.statusCode == 200) {
+    // Debug: cek apa yang dikirim server
+    print('Status code: ${responseBody.statusCode}');
+    print('Response body: ${responseBody.body}');
+
+    if (responseBody.statusCode >= 200 && responseBody.statusCode < 300) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', widget.token);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -152,6 +160,7 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
           backgroundColor: AppColors.buttonBackground,
         ),
       );
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -162,7 +171,7 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Gagal mengirim data'),
           backgroundColor: Colors.red,
         ),

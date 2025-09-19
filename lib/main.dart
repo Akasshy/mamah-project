@@ -9,6 +9,14 @@ import 'package:flutter/rendering.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Pastikan mendukung portrait & landscape
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
   // Mengatur status bar transparan
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -22,6 +30,7 @@ void main() async {
   final token = prefs.getString('token');
   final role = prefs.getString('role') ?? 'ibu';
   debugPaintSizeEnabled = false;
+
   runApp(MyApp(isLoggedIn: token != null, role: role));
 }
 

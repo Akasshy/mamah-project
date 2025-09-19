@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/homePage.dart';
+import 'package:health_app/ibu/beranda/reksasipage.dart';
+import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/skrining/show_score_page.dart';
 import 'package:health_app/ip_config.dart';
 import 'package:health_app/profile.dart';
@@ -145,7 +147,14 @@ class _BerandaState extends State<Beranda> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      Image.asset('images/mamah.png', height: 60),
+                      Text(
+                        'MaMah',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Spacer(),
                       GestureDetector(
                         onTap: () {
@@ -222,8 +231,7 @@ class _BerandaState extends State<Beranda> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const HomePage(initialIndex: 0, role: 'ibu'),
+                              builder: (context) => RelaxasiPage(),
                             ),
                           );
                         },
@@ -241,7 +249,7 @@ class _BerandaState extends State<Beranda> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const HomePage(initialIndex: 1, role: 'ibu'),
+                                  const HomePage(initialIndex: 2, role: 'ibu'),
                             ),
                           );
                         },
@@ -259,7 +267,7 @@ class _BerandaState extends State<Beranda> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  const HomePage(initialIndex: 2, role: 'ibu'),
+                                  const HomePage(initialIndex: 1, role: 'ibu'),
                             ),
                           );
                         },
@@ -276,8 +284,7 @@ class _BerandaState extends State<Beranda> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const HomePage(initialIndex: 3, role: 'ibu'),
+                              builder: (context) => DiskusiPage(),
                             ),
                           );
                         },

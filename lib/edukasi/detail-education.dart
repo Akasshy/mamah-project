@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:health_app/app_colors.dart';
 import 'package:health_app/ip_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,7 +27,6 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
     return prefs.getString('token');
   }
 
-  /// Ganti 127.0.0.1 dengan baseUrl jika ada
   String getValidUrl(String url) {
     if (url.contains('127.0.0.1')) {
       final server = baseUrl.replaceAll(RegExp(r'/$'), '');
@@ -60,7 +61,6 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
     final type = (detail!['media_type'] ?? '').toLowerCase();
 
     if (type == 'video') {
-      // 1. YouTube
       if (url.contains('youtube.com') || url.contains('youtu.be')) {
         final id = YoutubePlayer.convertUrlToId(url);
         if (id != null) {
@@ -69,14 +69,10 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
             flags: const YoutubePlayerFlags(autoPlay: false),
           );
         }
-      }
-      // 2. Video MP4
-      else if (url.endsWith('.mp4')) {
+      } else if (url.endsWith('.mp4')) {
         _videoController = VideoPlayerController.network(url)
           ..initialize().then((_) => setState(() {}));
-      }
-      // 3. Google Drive MP4
-      else if (url.contains('drive.google.com')) {
+      } else if (url.contains('drive.google.com')) {
         final reg = RegExp(r'/d/([a-zA-Z0-9_-]+)');
         final match = reg.firstMatch(url);
         if (match != null) {
@@ -87,7 +83,6 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
         }
       }
     }
-    // Untuk image tidak perlu setup controller
   }
 
   @override
@@ -115,35 +110,70 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => Container(
           height: 200,
-          color: Colors.grey[300],
+          color: AppColors.inputFill,
           child: const Center(child: Text('Gambar tidak tersedia')),
         ),
       );
     }
 
     if (type == 'video') {
-      // YouTube
+      // ✅ YOUTUBE
       if (_youtubeController != null) {
-        return AspectRatio(
-          aspectRatio: 16 / 9,
-          child: YoutubePlayer(
+        return YoutubePlayerBuilder(
+          player: YoutubePlayer(
             controller: _youtubeController!,
             showVideoProgressIndicator: true,
           ),
+          builder: (context, player) => player,
         );
       }
-      // MP4 / Google Drive
+
+      // ✅ MP4 / DRIVE VIDEO
       if (_videoController != null && _videoController!.value.isInitialized) {
-        return AspectRatio(
-          aspectRatio: _videoController!.value.aspectRatio,
-          child: VideoPlayer(_videoController!),
+        return Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            AspectRatio(
+              aspectRatio: _videoController!.value.aspectRatio,
+              child: VideoPlayer(_videoController!),
+            ),
+            Positioned(
+              right: 8,
+              bottom: 8,
+              child: IconButton(
+                icon: const Icon(
+                  Icons.fullscreen,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                onPressed: () async {
+                  await SystemChrome.setPreferredOrientations([
+                    DeviceOrientation.landscapeRight,
+                    DeviceOrientation.landscapeLeft,
+                  ]);
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          FullScreenVideoPage(controller: _videoController!),
+                    ),
+                  );
+                  await SystemChrome.setPreferredOrientations([
+                    DeviceOrientation.portraitUp,
+                    DeviceOrientation.portraitDown,
+                  ]);
+                },
+              ),
+            ),
+          ],
         );
       }
-      // Google Drive fallback
+
+      // ✅ Google Drive fallback
       if (url.contains('drive.google.com')) {
         return Container(
           height: 200,
-          color: Colors.grey[300],
+          color: AppColors.inputFill,
           child: Center(
             child: ElevatedButton(
               onPressed: () async {
@@ -165,15 +195,15 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
 
       return Container(
         height: 200,
-        color: Colors.grey[300],
+        color: AppColors.inputFill,
         child: const Center(child: Text('Video tidak tersedia')),
       );
     }
 
-    // fallback umum
     return Container(
       height: 200,
-      color: Colors.grey[300],
+      color: AppColors.inputFill,
+
       child: const Center(child: Text('Media tidak tersedia')),
     );
   }
@@ -204,6 +234,37 @@ class _EducationDetailPageState extends State<EducationDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class FullScreenVideoPage extends StatelessWidget {
+  final VideoPlayerController controller;
+
+  const FullScreenVideoPage({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: controller.value.aspectRatio,
+              child: VideoPlayer(controller),
+            ),
+          ),
+          Positioned(
+            top: 30,
+            left: 10,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
       ),
     );
   }

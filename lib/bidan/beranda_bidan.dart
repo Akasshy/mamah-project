@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/homePage.dart';
+import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ip_config.dart';
 import 'package:health_app/profile.dart';
 import 'package:http/http.dart' as http;
@@ -198,8 +199,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  HomePage(initialIndex: 3, role: 'bidan'),
+                              builder: (context) => DiskusiPage(),
                             ),
                           );
                         },
@@ -216,7 +216,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  HomePage(initialIndex: 4, role: 'bidan'),
+                                  HomePage(initialIndex: 3, role: 'bidan'),
                             ),
                           );
                         },
