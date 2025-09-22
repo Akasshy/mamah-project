@@ -136,19 +136,19 @@ class _SkriningsPageState extends State<SkriningsPage> {
       appBar: AppBar(
         foregroundColor: Colors.white,
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         centerTitle: false,
         title: const Text(
           'Skrining Kesehatan Ibu',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: AppColors.primary,
+            color: Colors.white,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: AppColors.primary),
+            icon: const Icon(Icons.info_outline, color: Colors.white),
             onPressed: () => _showInfoDialog(context),
           ),
         ],
@@ -178,7 +178,7 @@ class _SkriningsPageState extends State<SkriningsPage> {
 
   Widget _buildHasilSkorCard(bool showConsultButton) {
     return Card(
-      color: AppColors.inputFill,
+      color: Colors.white,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       shadowColor: Colors.black.withOpacity(0.1),

@@ -188,7 +188,7 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(70),
           child: Container(
-            color: Colors.white,
+            color: AppColors.background,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),
@@ -201,7 +201,7 @@ class _KonsultasiPageState extends State<KonsultasiPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
-                          color: Colors.black,
+                          color: Colors.white,
                         ),
                       ),
                     ],

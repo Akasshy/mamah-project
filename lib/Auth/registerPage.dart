@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:health_app/Auth/compliteIbu.dart';
+import 'package:health_app/Auth/next_register_page.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/ip_config.dart';
-import 'package:health_app/next_register_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,10 +30,9 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void initState() {
     super.initState();
-    _fetchVillages(); // Ambil daftar desa saat halaman dibuka
+    _fetchVillages();
   }
 
-  // Ambil data desa/kelurahan dari API
   Future<void> _fetchVillages() async {
     setState(() => _isLoadingVillages = true);
     try {
@@ -94,55 +94,122 @@ class _RegisterPageState extends State<RegisterPage> {
 
       final roleToSend = _selectedRole!.toLowerCase().trim();
 
-      final loadingBar = SnackBar(
-        duration: const Duration(minutes: 1),
-        backgroundColor: Colors.blue.shade700,
-        content: Row(
-          children: const [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(width: 16),
-            Expanded(child: Text('Sedang mendaftarkan akun...')),
-          ],
-        ),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(loadingBar);
-
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/api/register'),
-          headers: {'Accept': 'application/json'},
-          body: {
-            'name': nameController.text.trim(),
-            'email': emailController.text.trim(),
-            'password': passwordController.text,
-            'role': roleToSend,
-            'village_id': _selectedVillage!,
-          },
+      // Jika role IBU, tampilkan dialog tanya hamil atau tidak
+      if (roleToSend == 'ibu') {
+        final bool? isPregnant = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              "Konfirmasi",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+            content: const Text(
+              "Apakah Anda sedang hamil?",
+              style: TextStyle(fontSize: 16, height: 1.5),
+            ),
+            actionsAlignment: MainAxisAlignment.spaceEvenly,
+            actions: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(color: AppColors.primaryTextColor),
+                ),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  "Tidak",
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Ya", style: TextStyle(color: Colors.black)),
+              ),
+            ],
+          ),
         );
 
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (isPregnant == null) return; // Dialog ditutup tanpa memilih
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final data = json.decode(response.body);
+        // Setelah tahu jawabannya, lanjut daftar
+        await _processRegister(roleToSend, isPregnant);
+      } else {
+        // Kalau bukan ibu (bidan), langsung daftar
+        await _processRegister(roleToSend, false);
+      }
+    }
+  }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Registrasi berhasil! Melanjutkan...',
-                style: TextStyle(color: Colors.white),
-              ),
-              backgroundColor: AppColors.buttonBackground,
-              duration: Duration(seconds: 2),
-            ),
+  Future<void> _processRegister(String roleToSend, bool isPregnant) async {
+    final loadingBar = SnackBar(
+      duration: const Duration(minutes: 1),
+      backgroundColor: Colors.blue.shade700,
+      content: Row(
+        children: const [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(width: 16),
+          Expanded(child: Text('Sedang mendaftarkan akun...')),
+        ],
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(loadingBar);
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/register'),
+        headers: {'Accept': 'application/json'},
+        body: {
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'password': passwordController.text,
+          'role': roleToSend,
+          'village_id': _selectedVillage!,
+        },
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', data['access_token']);
+        await prefs.setString('user_id', data['user']['id'].toString());
+        await prefs.setString('role', data['user']['role'] ?? 'ibu');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registrasi berhasil!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (roleToSend == 'ibu' && isPregnant) {
+          // Kalau YA → ke halaman CompleteMotherPage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const CompleteMotherPage()),
           );
-
-          await Future.delayed(const Duration(seconds: 2));
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', data['access_token']);
-          await prefs.setString('user_id', data['user']['id'].toString());
-          await prefs.setString('role', data['user']['role'] ?? 'ibu');
-
+        } else {
+          // Kalau bidan atau ibu yang tidak hamil → langsung ke NextRegisterPage
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
@@ -153,24 +220,24 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             (route) => false,
           );
-        } else {
-          final error = json.decode(response.body);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error['message'] ?? 'Registrasi gagal'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
-      } catch (e) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      } else {
+        final error = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-            backgroundColor: Colors.red.shade700,
+            content: Text(error['message'] ?? 'Registrasi gagal'),
+            backgroundColor: Colors.red,
           ),
         );
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
     }
   }
 
@@ -182,8 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(
           child: RefreshIndicator(
-            // <-- Tambahkan ini
-            onRefresh: _fetchVillages, // Fungsi yang dijalankan saat refresh
+            onRefresh: _fetchVillages,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -249,12 +315,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           value!.length < 6 ? 'Minimal 6 karakter' : null,
                     ),
                     const SizedBox(height: 16),
-
-                    // Dropdown Desa/Kelurahan
                     DropdownButtonFormField<String>(
                       value: _selectedVillage,
-                      isExpanded:
-                          true, // <-- penting agar teks tidak mepet ke tepi
+                      isExpanded: true,
                       items: _villages
                           .map(
                             (v) => DropdownMenuItem<String>(
@@ -269,10 +332,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       validator: (value) =>
                           value == null ? 'Pilih desa/kelurahan' : null,
                     ),
-
                     const SizedBox(height: 24),
-
-                    // PILIH ROLE
                     Row(
                       children: [
                         Expanded(
@@ -295,9 +355,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 30),
-
                     ElevatedButton(
                       onPressed: _registerUser,
                       style: ElevatedButton.styleFrom(
@@ -313,7 +371,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     RichText(
                       text: TextSpan(
                         style: const TextStyle(color: AppColors.labelText),

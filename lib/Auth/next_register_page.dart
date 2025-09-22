@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:health_app/app_colors.dart';
@@ -117,9 +118,19 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
   Future<void> submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      isLoading = true;
-    });
+    final loadingBar = SnackBar(
+      duration: const Duration(minutes: 2),
+      backgroundColor: Colors.blue.shade700,
+      content: Row(
+        children: const [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(width: 16),
+          Expanded(child: Text('Mengirim data profil...')),
+        ],
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(loadingBar);
 
     final uri = Uri.parse('$baseUrl/api/complete-profile');
     final request = http.MultipartRequest('POST', uri);
@@ -134,48 +145,45 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
       );
     }
 
-    final response = await request.send();
+    try {
+      final response = await request.send();
+      final responseBody = await http.Response.fromStream(response);
 
-    // Convert StreamedResponse -> Response biasa
-    final responseBody = await http.Response.fromStream(response);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-    setState(() {
-      isLoading = false;
-    });
+      if (responseBody.statusCode >= 200 && responseBody.statusCode < 300) {
+        final data = jsonDecode(responseBody.body);
 
-    // Debug: cek apa yang dikirim server
-    print('Status code: ${responseBody.statusCode}');
-    print('Response body: ${responseBody.body}');
+        // ✅ Simpan user baru ke SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(data['user']));
+        await prefs.setString('token', widget.token);
 
-    if (responseBody.statusCode >= 200 && responseBody.statusCode < 300) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', widget.token);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Profil berhasil dilengkapi',
-            style: TextStyle(color: Colors.white),
+        // ✅ Arahkan ke HomePage dengan role terbaru
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                HomePage(initialIndex: 0, role: data['user']['role']),
           ),
-          backgroundColor: AppColors.buttonBackground,
-        ),
-      );
-
-      Navigator.pushAndRemoveUntil(
+          (route) => false,
+        );
+      } else {
+        print("RESPON ERROR: ${responseBody.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal mengirim data (Status: ${responseBody.statusCode})',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(
         context,
-        MaterialPageRoute(
-          builder: (context) =>
-              HomePage(initialIndex: 0, role: widget.user['role'] ?? 'ibu'),
-        ),
-        (route) => false,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengirim data'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
     }
   }
 
@@ -185,7 +193,11 @@ class _NextRegisterPageState extends State<NextRegisterPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        title: const Text('Lengkapi Data'),
+        title: const Text(
+          'Lengkapi Data',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        foregroundColor: Colors.white,
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),

@@ -636,7 +636,7 @@ class _DetailDiskusiState extends State<DetailDiskusi> {
           isLoading = false;
         });
       } else {
-        throw Exception('Gagal memuat data grup');
+        throw Exception('Gagal memuat data komunitas');
       }
     } catch (e) {
       setState(() {
@@ -649,7 +649,7 @@ class _DetailDiskusiState extends State<DetailDiskusi> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detail Grup'),
+        title: const Text('Detail Komunitas'),
         backgroundColor: AppColors.buttonBackground,
         foregroundColor: Colors.white,
       ),

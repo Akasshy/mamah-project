@@ -133,17 +133,14 @@ class _EducationPageState extends State<EducationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Materi Edukasi',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         elevation: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -172,7 +169,7 @@ class _EducationPageState extends State<EducationPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.primaryTextColor,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 12),
@@ -320,7 +317,7 @@ class _EducationPageState extends State<EducationPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryTextColor,
+                color: Colors.white,
               ),
             ),
             FutureBuilder<List<Category>>(

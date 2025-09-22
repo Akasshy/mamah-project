@@ -9,6 +9,7 @@ import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/konsultasi/konsultasi_page.dart';
 import 'package:health_app/ibu/skrining/skrinings_page.dart';
 import 'package:health_app/custom_scaffold.dart';
+import 'package:health_app/profile.dart';
 
 class HomePage extends StatefulWidget {
   final int initialIndex;
@@ -37,17 +38,17 @@ class _HomePageState extends State<HomePage> {
     if (widget.role == 'ibu') {
       _pages = const [
         Beranda(),
-        SkriningsPage(),
-        EducationPage(),
         KonsultasiPage(),
+        ProfilePage(),
+        // SkriningsPage(),
         // DiskusiPage(),
       ];
     } else if (widget.role == 'bidan') {
       _pages = const [
         BerandaBidan(),
-        SkriningBidan(),
-        EducationPage(),
         KonsultasiPage(),
+        ProfilePage(),
+        // SkriningBidan(),
         // DiskusiPage(),
       ];
     } else {

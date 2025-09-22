@@ -84,11 +84,11 @@ class _RelaxasiPageState extends State<RelaxasiPage> {
       appBar: AppBar(
         title: const Text(
           'Video Relaksasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 1,
-        iconTheme: const IconThemeData(color: AppColors.primary),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),

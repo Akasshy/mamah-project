@@ -223,7 +223,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             // App Bar with Gradient
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.background,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -245,10 +245,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: AppColors.background,
-                        ),
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
                         onPressed: () {
                           Navigator.pop(
                             context,
@@ -257,19 +254,16 @@ class _DiskusiPageState extends State<DiskusiPage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Forum Diskusi',
+                        'Komunitas Ibu',
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          color: AppColors.background,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.refresh,
-                      color: AppColors.background,
-                    ),
+                    icon: const Icon(Icons.refresh, color: Colors.white),
                     onPressed: _fetchGroups,
                   ),
                 ],
@@ -288,7 +282,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Cari grup diskusi...',
+                    hintText: 'Cari komunitas ibu...',
                     hintStyle: TextStyle(color: Colors.white),
                     prefixIcon: Icon(Icons.search, color: Colors.white),
                     border: InputBorder.none,
@@ -336,7 +330,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           icon: const Icon(Icons.add),
-          label: const Text('Buat Grup Baru'),
+          label: const Text('Buat komunitas baru'),
           onPressed: () {
             Navigator.push(
               context,
@@ -394,14 +388,14 @@ class _DiskusiPageState extends State<DiskusiPage> {
             const SizedBox(height: 16),
             Text(
               _searchController.text.isEmpty
-                  ? 'Belum ada grup diskusi'
-                  : 'Grup tidak ditemukan',
+                  ? 'Belum ada komunitas'
+                  : 'komunitas tidak ditemukan',
               style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 8),
             Text(
               _searchController.text.isEmpty
-                  ? 'Tekan tombol + untuk membuat grup baru'
+                  ? 'Tekan tombol + untuk membuat komunitas baru'
                   : 'Coba dengan kata kunci lain',
               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
@@ -549,7 +543,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                             children: [
                               Icon(Icons.edit, color: AppColors.primary),
                               const SizedBox(width: 8),
-                              const Text('Edit Grup'),
+                              const Text('Edit Komunitas'),
                             ],
                           ),
                         ),
@@ -559,7 +553,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
                             children: [
                               Icon(Icons.delete, color: Colors.red[400]),
                               const SizedBox(width: 8),
-                              const Text('Hapus Grup'),
+                              const Text('Hapus Komunitas'),
                             ],
                           ),
                         ),
@@ -616,7 +610,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Seluruh grup dan pesan di dalamnya akan dihapus secara permanen. Apakah kamu yakin ingin melanjutkan?',
+                'Komunitas ini dan seluruh pesan di dalamnya akan dihapus secara permanen. Apakah kamu yakin ingin melanjutkan?',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.black54),
               ),

@@ -61,23 +61,30 @@ class CustomScaffold extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
           items: [
             _buildBottomNavItem(Icons.home_outlined, Icons.home, 'Beranda'),
-            _buildBottomNavItem(
-              Icons.assignment_outlined,
-              Icons.assignment,
-              'Skrining',
-            ),
-            _buildBottomNavItem(
-              Icons.menu_book_outlined,
-              Icons.menu_book,
-              'Edukasi',
-            ),
+            // _buildBottomNavItem(
+            //   Icons.assignment_outlined,
+            //   Icons.assignment,
+            //   'Skrining',
+            // ),
+            // _buildBottomNavItem(
+            //   Icons.menu_book_outlined,
+            //   Icons.menu_book,
+            //   'Edukasi',
+            // ),
             // _buildBottomNavItem(Icons.forum_outlined, Icons.forum, 'Diskusi'),
             _buildBottomNavItem(
               Icons.chat_outlined,
               Icons.chat,
               'Konsultasi',
-              showBadge: consultationBadgeCount > 0,
-              badgeCount: consultationBadgeCount,
+              // showBadge: consultationBadgeCount > 0,
+              // badgeCount: consultationBadgeCount,
+            ),
+            _buildBottomNavItem(
+              Icons.person_2_outlined,
+              Icons.person,
+              'Profile',
+              // showBadge: consultationBadgeCount > 0,
+              // badgeCount: consultationBadgeCount,
             ),
           ],
         ),

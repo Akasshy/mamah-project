@@ -2,17 +2,42 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
+import 'package:health_app/edukasi/detail-education.dart';
+import 'package:health_app/edukasi/education_page.dart';
 import 'package:health_app/homePage.dart';
 import 'package:health_app/ibu/beranda/reksasipage.dart';
 import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/skrining/show_score_page.dart';
+import 'package:health_app/ibu/skrining/skrinings_page.dart';
 import 'package:health_app/ip_config.dart';
-import 'package:health_app/profile.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 // ignore: unused_import
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+
+class RelaxationVideo {
+  final int id;
+  final String title;
+  final String mediaType;
+  final String? fileUrl;
+
+  RelaxationVideo({
+    required this.id,
+    required this.title,
+    required this.mediaType,
+    this.fileUrl,
+  });
+
+  factory RelaxationVideo.fromJson(Map<String, dynamic> json) {
+    return RelaxationVideo(
+      id: json['id'],
+      title: json['title'],
+      mediaType: json['media_type'],
+      fileUrl: json['file_url'],
+    );
+  }
+}
 
 class Beranda extends StatefulWidget {
   const Beranda({Key? key}) : super(key: key);
@@ -30,6 +55,9 @@ class _BerandaState extends State<Beranda> {
   final PageController _bannerController = PageController();
   int _currentBannerIndex = 0;
 
+  List<RelaxationVideo> relaxationVideos = [];
+  bool isLoadingRelaxation = true;
+
   final List<String> dailyTips = [
     "Istirahat cukup penting untuk kesehatan mental",
     "Luangkan waktu untuk diri sendiri",
@@ -45,6 +73,7 @@ class _BerandaState extends State<Beranda> {
     super.initState();
     loadUserData();
     fetchScreeningResult();
+    fetchAndSetRelaxationVideos();
     _startBannerTimer();
   }
 
@@ -52,6 +81,49 @@ class _BerandaState extends State<Beranda> {
   void dispose() {
     _bannerController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  Future<List<RelaxationVideo>> fetchRelaxationVideos() async {
+    final token = await _getToken();
+    if (token == null) throw Exception("Token tidak ditemukan.");
+
+    final res = await http.get(
+      // Uri.parse('$baseUrl/api/flyer'),
+      Uri.parse('$baseUrl/api/relaxation'),
+      headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+    );
+
+    if (res.statusCode == 200) {
+      final jsonData = jsonDecode(res.body);
+      final List data = jsonData['data'];
+      return data.map((e) => RelaxationVideo.fromJson(e)).toList();
+    } else if (res.statusCode == 404) {
+      return [];
+    } else {
+      throw Exception('Gagal memuat data (${res.statusCode})');
+    }
+  }
+
+  void fetchAndSetRelaxationVideos() async {
+    try {
+      final videos = await fetchRelaxationVideos();
+      if (mounted) {
+        setState(() {
+          relaxationVideos = videos;
+          isLoadingRelaxation = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingRelaxation = false;
+      });
+      debugPrint("Error memuat video/poto: $e");
+    }
   }
 
   void _startBannerTimer() {
@@ -124,7 +196,6 @@ class _BerandaState extends State<Beranda> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     final String tipsHariIni = dailyTips[DateTime.now().weekday % 7];
 
@@ -134,7 +205,7 @@ class _BerandaState extends State<Beranda> {
         statusBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(80),
           child: Container(
@@ -157,14 +228,6 @@ class _BerandaState extends State<Beranda> {
                       ),
                       const Spacer(),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfilePage(),
-                            ),
-                          ).then((_) => loadUserData());
-                        },
                         child: Row(
                           children: [
                             Column(
@@ -174,17 +237,9 @@ class _BerandaState extends State<Beranda> {
                                 Text(
                                   userName ?? 'Loading...',
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                     color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Lihat Profil',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
                               ],
@@ -217,7 +272,15 @@ class _BerandaState extends State<Beranda> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Menu 4 item menyesuaikan lebar perangkat
+                Text(
+                  "Selamat datang, ${userName ?? 'Ibu'}",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
+                SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -248,8 +311,7 @@ class _BerandaState extends State<Beranda> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const HomePage(initialIndex: 2, role: 'ibu'),
+                              builder: (context) => EducationPage(),
                             ),
                           );
                         },
@@ -263,11 +325,10 @@ class _BerandaState extends State<Beranda> {
                         Icons.assignment_outlined,
                         AppColors.primary,
                         () {
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const HomePage(initialIndex: 1, role: 'ibu'),
+                              builder: (context) => SkriningsPage(),
                             ),
                           );
                         },
@@ -326,6 +387,79 @@ class _BerandaState extends State<Beranda> {
                     );
                   },
                 ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
+
+                const SizedBox(height: 16),
+                Text(
+                  "Video Flyer",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (isLoadingRelaxation)
+                  const Center(child: CircularProgressIndicator())
+                else if (relaxationVideos.isEmpty)
+                  const Text("Belum ada video atau poto yang tersedia.")
+                else
+                  SizedBox(
+                    height: 140,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: relaxationVideos.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final video = relaxationVideos[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    EducationDetailPage(id: video.id),
+                              ),
+                            );
+                          },
+
+                          child: Container(
+                            width: 200,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  video.mediaType == "video"
+                                      ? Icons.play_circle_fill
+                                      : Icons.image,
+                                  size: 40,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: Text(
+                                    video.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -348,7 +482,7 @@ class _BerandaState extends State<Beranda> {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
-          width: 94, // Lebar fixed untuk konsistensi
+          width: 94,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -379,15 +513,6 @@ class _BerandaState extends State<Beranda> {
         ),
       ),
     );
-  }
-
-  Widget _buildTipsCard(
-    String title,
-    String content,
-    IconData icon,
-    Color color,
-  ) {
-    return _buildCardTemplate(title, content, icon, color);
   }
 
   Widget _buildInfoCard(

@@ -4,7 +4,7 @@ import 'package:health_app/ip_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/gestures.dart';
 import 'package:health_app/homePage.dart';
-import 'package:health_app/registerPage.dart';
+import 'package:health_app/Auth/registerPage.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -118,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Center(

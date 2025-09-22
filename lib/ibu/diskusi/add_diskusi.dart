@@ -170,7 +170,7 @@ class _AddGroupPageState extends State<AddGroupPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
-          isEdit ? 'Edit Grup' : 'Tambah Grup Baru',
+          isEdit ? 'Edit Komunitas' : 'Tambah Komunitas Baru',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -213,7 +213,7 @@ class _AddGroupPageState extends State<AddGroupPage> {
               ),
               const SizedBox(height: 32),
               Text(
-                isEdit ? 'Perbarui detail grup' : 'Buat grup baru',
+                isEdit ? 'Perbarui detail Komunitas' : 'Buat Komunitas baru',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
@@ -222,8 +222,8 @@ class _AddGroupPageState extends State<AddGroupPage> {
               const SizedBox(height: 8),
               Text(
                 isEdit
-                    ? 'Perbarui informasi grup Anda'
-                    : 'Isi formulir di bawah untuk membuat grup baru',
+                    ? 'Perbarui informasi komunitas Anda'
+                    : 'Isi formulir di bawah untuk membuat komunitas baru',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.black54,
                 ),
@@ -232,14 +232,17 @@ class _AddGroupPageState extends State<AddGroupPage> {
               const SizedBox(height: 32),
               TextField(
                 controller: nameController,
-                decoration: _inputDecoration('Nama Grup', _isNameValid),
+                decoration: _inputDecoration('Nama Komunitas', _isNameValid),
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: descController,
                 maxLines: 3,
-                decoration: _inputDecoration('Deskripsi Grup', _isDescValid),
+                decoration: _inputDecoration(
+                  'Deskripsi Komunitas',
+                  _isDescValid,
+                ),
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 36),
@@ -268,7 +271,9 @@ class _AddGroupPageState extends State<AddGroupPage> {
                           ),
                         )
                       : Text(
-                          isEdit ? 'PERBARUI GRUP' : 'SIMPAN GRUP BARU',
+                          isEdit
+                              ? 'PERBARUI KOMUNITAS'
+                              : 'SIMPAN KOMUNITAS BARU',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
