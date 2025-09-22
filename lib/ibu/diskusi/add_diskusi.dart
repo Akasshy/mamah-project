@@ -167,30 +167,26 @@ class _AddGroupPageState extends State<AddGroupPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           isEdit ? 'Edit Grup' : 'Tambah Grup Baru',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: AppColors.background,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.buttonBackground,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.background,
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
         ),
       ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.background.withOpacity(0.8),
-              AppColors.background.withOpacity(0.95),
-            ],
-          ),
-        ),
+        decoration: BoxDecoration(color: AppColors.background),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(

@@ -2,8 +2,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color background = Colors.white;
-
+  static const Color background = Color(0xFFFFCCCC);
   // 🔵 Ganti hijau jadi biru dengan variasi tone
   static const Color inputFill = Color(
     0xFFE3F2FD,

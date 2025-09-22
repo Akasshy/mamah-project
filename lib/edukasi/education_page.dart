@@ -133,15 +133,18 @@ class _EducationPageState extends State<EducationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Materi Edukasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
         ),
-        backgroundColor: Colors.white,
         elevation: 1,
-        iconTheme: const IconThemeData(color: AppColors.primary),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

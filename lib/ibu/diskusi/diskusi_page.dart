@@ -223,14 +223,7 @@ class _DiskusiPageState extends State<DiskusiPage> {
             // App Bar with Gradient
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withOpacity(0.9),
-                    AppColors.primary.withOpacity(0.7),
-                  ],
-                ),
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -252,7 +245,10 @@ class _DiskusiPageState extends State<DiskusiPage> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.background,
+                        ),
                         onPressed: () {
                           Navigator.pop(
                             context,
@@ -263,14 +259,17 @@ class _DiskusiPageState extends State<DiskusiPage> {
                       Text(
                         'Forum Diskusi',
                         style: theme.textTheme.headlineSmall?.copyWith(
-                          color: Colors.white,
+                          color: AppColors.background,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: AppColors.background,
+                    ),
                     onPressed: _fetchGroups,
                   ),
                 ],
@@ -284,16 +283,14 @@ class _DiskusiPageState extends State<DiskusiPage> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: Colors.white),
                 ),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Cari grup diskusi...',
-                    hintStyle: TextStyle(
-                      color: AppColors.primary.withOpacity(0.7),
-                    ),
-                    prefixIcon: Icon(Icons.search, color: AppColors.primary),
+                    hintStyle: TextStyle(color: Colors.white),
+                    prefixIcon: Icon(Icons.search, color: Colors.white),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 16,

@@ -134,6 +134,7 @@ class _SkriningsPageState extends State<SkriningsPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        foregroundColor: Colors.white,
         elevation: 0,
         backgroundColor: Colors.white,
         centerTitle: false,
@@ -142,12 +143,12 @@ class _SkriningsPageState extends State<SkriningsPage> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: Colors.black,
+            color: AppColors.primary,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.black54),
+            icon: const Icon(Icons.info_outline, color: AppColors.primary),
             onPressed: () => _showInfoDialog(context),
           ),
         ],

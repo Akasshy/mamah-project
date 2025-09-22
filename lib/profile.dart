@@ -32,11 +32,19 @@ class _ProfilePageState extends State<ProfilePage>
   final TextEditingController confirmPasswordController =
       TextEditingController();
   final TextEditingController birthDateController = TextEditingController();
+  final TextEditingController fullAddressController = TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isEditing = false;
   String? profilePhotoUrl;
+
+  // Tambahan variabel untuk detail ibu
+  String? motherAge,
+      pregnancyNumber,
+      liveChildrenCount,
+      miscarriageHistory,
+      motherDiseaseHistory;
 
   @override
   void initState() {
@@ -54,12 +62,11 @@ class _ProfilePageState extends State<ProfilePage>
 
   File? _selectedImage;
 
-  // Fungsi untuk memilih gambar dari camera/galeri
   Future<void> _pickImage(ImageSource source) async {
     try {
       final pickedFile = await ImagePicker().pickImage(
         source: source,
-        imageQuality: 50, // Kompresi gambar (0 = kualitas rendah, 100 = asli)
+        imageQuality: 50,
       );
 
       if (pickedFile != null) {
@@ -92,7 +99,6 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  // Bottom sheet untuk opsi pilih gambar
   void _showImagePickerOptions() {
     showModalBottomSheet(
       context: context,
@@ -124,7 +130,6 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  // Fungsi untuk memilih tanggal lahir lewat calendar dialog
   Future<void> _selectBirthDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -134,14 +139,12 @@ class _ProfilePageState extends State<ProfilePage>
     );
     if (picked != null) {
       setState(() {
-        // Format tanggal: yyyy-MM-dd
         birthDateController.text =
             "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
       });
     }
   }
 
-  // Load profile data from API
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -161,9 +164,16 @@ class _ProfilePageState extends State<ProfilePage>
           phoneController.text = profile['phone'] ?? '';
           addressController.text = profile['address'] ?? '';
           birthDateController.text = profile['birth_date'] ?? '';
+          fullAddressController.text = profile['full_address'] ?? '';
+
+          // simpan detail ibu
+          motherAge = profile['mother_age']?.toString();
+          pregnancyNumber = profile['pregnancy_number']?.toString();
+          liveChildrenCount = profile['live_children_count']?.toString();
+          miscarriageHistory = profile['miscarriage_history'];
+          motherDiseaseHistory = profile['mother_disease_history'];
         });
       } else {
-        // Handle error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal memuat profil'),
@@ -174,7 +184,6 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  // Save profile data to API
   Future<void> _saveProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -239,12 +248,6 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 8),
@@ -253,7 +256,7 @@ class _ProfilePageState extends State<ProfilePage>
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: AppColors.primaryTextColor, // ✅ warna judul pakai warna brand
+          color: AppColors.primaryTextColor,
         ),
       ),
     );
@@ -277,9 +280,7 @@ class _ProfilePageState extends State<ProfilePage>
         boxShadow: [
           if (!readOnly)
             BoxShadow(
-              color: AppColors.primary.withOpacity(
-                0.08,
-              ), // ✅ bayangan biru lembut
+              color: AppColors.primary.withOpacity(0.08),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),
@@ -306,14 +307,14 @@ class _ProfilePageState extends State<ProfilePage>
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
-              color: AppColors.inputBorder, // ✅ warna border normal
+              color: AppColors.inputBorder,
               width: 1.5,
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(
-              color: AppColors.inputBorderFocused, // ✅ warna border fokus
+              color: AppColors.inputBorderFocused,
               width: 2,
             ),
           ),
@@ -340,6 +341,48 @@ class _ProfilePageState extends State<ProfilePage>
         _saveProfile();
       }
     });
+  }
+
+  void _showMotherDetails() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Detail Ibu",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              Text("Usia Ibu: ${motherAge ?? '-'}"),
+              Text("Kehamilan ke: ${pregnancyNumber ?? '-'}"),
+              Text("Jumlah Anak Hidup: ${liveChildrenCount ?? '-'}"),
+              Text("Riwayat Keguguran: ${miscarriageHistory ?? '-'}"),
+              Text("Riwayat Penyakit Ibu: ${motherDiseaseHistory ?? '-'}"),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.buttonBackground,
+                  ),
+                  child: const Text("Tutup"),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _logout() async {
@@ -394,8 +437,6 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Tombol aksi
               Row(
                 children: [
                   Expanded(
@@ -431,8 +472,7 @@ class _ProfilePageState extends State<ProfilePage>
                   ),
                 ],
               ),
-
-              const SizedBox(height: 16), // Tambahan space di bawah
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -459,7 +499,7 @@ class _ProfilePageState extends State<ProfilePage>
       animation: _animationController,
       builder: (context, child) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: AppColors.background,
             elevation: 0,
@@ -523,9 +563,7 @@ class _ProfilePageState extends State<ProfilePage>
                                       ? FileImage(_selectedImage!)
                                       : (profilePhotoUrl != null &&
                                                     profilePhotoUrl!.isNotEmpty
-                                                ? NetworkImage(
-                                                    profilePhotoUrl!,
-                                                  ) // ✅ Gunakan langsung
+                                                ? NetworkImage(profilePhotoUrl!)
                                                 : const AssetImage(
                                                     'images/default-pp.jpg',
                                                   ))
@@ -566,7 +604,6 @@ class _ProfilePageState extends State<ProfilePage>
 
                         _buildSectionTitle('Informasi Pribadi'),
 
-                        // Nama - selalu readOnly true
                         _buildTextField(
                           controller: nameController,
                           label: 'Nama Lengkap',
@@ -576,149 +613,103 @@ class _ProfilePageState extends State<ProfilePage>
                               : null,
                         ),
 
-                        // Email - selalu readOnly true
                         _buildTextField(
                           controller: emailController,
                           label: 'Email',
                           keyboardType: TextInputType.emailAddress,
                           readOnly: !_isEditing,
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return 'Email harus diisi';
+                            }
                             final emailRegex = RegExp(
                               r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                             );
-                            if (!emailRegex.hasMatch(value))
+                            if (!emailRegex.hasMatch(value)) {
                               return 'Format email tidak valid';
+                            }
                             return null;
                           },
                         ),
 
-                        // Nomor HP - editable hanya jika _isEditing == true
                         _buildTextField(
                           controller: phoneController,
                           label: 'Nomor HP',
                           keyboardType: TextInputType.phone,
                           readOnly: !_isEditing,
-                          inputFormatters: [
-                            FilteringTextInputFormatter
-                                .digitsOnly, // ✅ Hanya angka
-                          ],
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Nomor HP harus diisi'
-                              : null,
                         ),
 
-                        // Alamat - editable hanya jika _isEditing == true
+                        // Tambahan kolom Full Address
+                        _buildTextField(
+                          controller: fullAddressController,
+                          label: 'Alamat Lengkap',
+                          readOnly: true,
+                        ),
+
                         _buildTextField(
                           controller: addressController,
                           label: 'Alamat',
-                          keyboardType: TextInputType.streetAddress,
                           readOnly: !_isEditing,
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Alamat harus diisi'
-                              : null,
                         ),
 
-                        // Tanggal Lahir - editable jika _isEditing true, buka kalender saat tap
                         _buildTextField(
                           controller: birthDateController,
                           label: 'Tanggal Lahir',
-                          readOnly: !_isEditing,
+                          readOnly: true,
                           onTap: _isEditing
                               ? () => _selectBirthDate(context)
                               : null,
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Tanggal lahir harus diisi'
-                              : null,
                         ),
 
-                        if (_isEditing) ...[
-                          _buildSectionTitle('Keamanan Akun'),
-                          _buildTextField(
-                            controller: passwordController,
-                            label: 'Password Baru',
-                            obscureText: !_isPasswordVisible,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: Colors.grey[500],
-                              ),
-                              onPressed: () => setState(
-                                () => _isPasswordVisible = !_isPasswordVisible,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value != null &&
-                                  value.isNotEmpty &&
-                                  value.length < 6) {
-                                return 'Password minimal 6 karakter';
-                              }
-                              return null;
-                            },
-                          ),
-                          _buildTextField(
-                            controller: confirmPasswordController,
-                            label: 'Konfirmasi Password',
-                            obscureText: !_isConfirmPasswordVisible,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isConfirmPasswordVisible
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: Colors.grey[500],
-                              ),
-                              onPressed: () => setState(
-                                () => _isConfirmPasswordVisible =
-                                    !_isConfirmPasswordVisible,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (passwordController.text.isNotEmpty &&
-                                  value != passwordController.text) {
-                                return 'Konfirmasi password tidak cocok';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                        const SizedBox(height: 12),
 
-                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _showMotherDetails,
+                          icon: const Icon(Icons.info_outline),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.buttonBackground,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          label: const Text("Lihat Detail Ibu"),
+                        ),
+
+                        const SizedBox(height: 40),
                         Center(
-                          child: TextButton(
-                            onPressed: _logout,
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.red[400],
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
+                                horizontal: 32,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.logout, size: 18),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Keluar dari Akun',
-                                  style: TextStyle(fontSize: 15),
-                                ),
-                              ],
+                            onPressed: _logout,
+                            child: const Text(
+                              'Keluar',
+                              style: TextStyle(fontSize: 16),
                             ),
                           ),
                         ),
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
                 ),
                 if (_isSaving)
                   Container(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withOpacity(0.5),
                     child: const Center(
                       child: CircularProgressIndicator(
-                        color: AppColors.buttonBackground,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.buttonBackground,
+                        ),
                       ),
                     ),
                   ),

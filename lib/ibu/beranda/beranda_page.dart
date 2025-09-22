@@ -134,11 +134,11 @@ class _BerandaState extends State<Beranda> {
         statusBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.white,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(80),
           child: Container(
-            decoration: BoxDecoration(color: Colors.white),
+            decoration: BoxDecoration(color: AppColors.background),
             padding: const EdgeInsets.only(top: 10.0),
             child: Center(
               child: ConstrainedBox(
@@ -151,7 +151,7 @@ class _BerandaState extends State<Beranda> {
                         'MaMah',
                         style: TextStyle(
                           fontSize: 30,
-                          color: AppColors.primary,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -176,7 +176,7 @@ class _BerandaState extends State<Beranda> {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 16,
-                                    color: AppColors.primary,
+                                    color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -184,7 +184,7 @@ class _BerandaState extends State<Beranda> {
                                   'Lihat Profil',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[600],
+                                    color: Colors.white.withOpacity(0.9),
                                   ),
                                 ),
                               ],
@@ -277,7 +277,7 @@ class _BerandaState extends State<Beranda> {
                     Expanded(
                       child: _buildMenuCard(
                         context,
-                        'Diskusi',
+                        'Komunitas',
                         Icons.forum_outlined,
                         AppColors.primary,
                         () {
