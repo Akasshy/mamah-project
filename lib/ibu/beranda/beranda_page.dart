@@ -93,8 +93,7 @@ class _BerandaState extends State<Beranda> {
     if (token == null) throw Exception("Token tidak ditemukan.");
 
     final res = await http.get(
-      // Uri.parse('$baseUrl/api/flyer'),
-      Uri.parse('$baseUrl/api/relaxation'),
+      Uri.parse('$baseUrl/api/flyer'),
       headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
     );
 
