@@ -1,10 +1,11 @@
+// ==================== IMPORTS ====================
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:health_app/app_colors.dart';
-import 'package:health_app/edukasi/detail-education.dart';
+// import 'package:health_app/edukasi/detail-education.dart';
 import 'package:health_app/edukasi/education_page.dart';
-import 'package:health_app/homePage.dart';
+// import 'package:health_app/homePage.dart';
 import 'package:health_app/ibu/beranda/reksasipage.dart';
 import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ibu/skrining/show_score_page.dart';
@@ -13,9 +14,11 @@ import 'package:health_app/ip_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 // ignore: unused_import
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
+// ==================== MODEL ====================
 class RelaxationVideo {
   final int id;
   final String title;
@@ -39,6 +42,7 @@ class RelaxationVideo {
   }
 }
 
+// ==================== MAIN PAGE ====================
 class Beranda extends StatefulWidget {
   const Beranda({Key? key}) : super(key: key);
 
@@ -68,12 +72,14 @@ class _BerandaState extends State<Beranda> {
     "Jaga pola makan dan hidrasi",
   ];
 
+  RelaxationVideo? relaxationVideo;
+
   @override
   void initState() {
     super.initState();
     loadUserData();
     fetchScreeningResult();
-    fetchAndSetRelaxationVideos();
+    fetchAndSetRelaxationVideo();
     _startBannerTimer();
   }
 
@@ -83,12 +89,13 @@ class _BerandaState extends State<Beranda> {
     super.dispose();
   }
 
+  // ==================== API & DATA ====================
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
   }
 
-  Future<List<RelaxationVideo>> fetchRelaxationVideos() async {
+  Future<RelaxationVideo?> fetchRelaxationVideo() async {
     final token = await _getToken();
     if (token == null) throw Exception("Token tidak ditemukan.");
 
@@ -99,21 +106,21 @@ class _BerandaState extends State<Beranda> {
 
     if (res.statusCode == 200) {
       final jsonData = jsonDecode(res.body);
-      final List data = jsonData['data'];
-      return data.map((e) => RelaxationVideo.fromJson(e)).toList();
+      final data = jsonData['data'];
+      return RelaxationVideo.fromJson(data);
     } else if (res.statusCode == 404) {
-      return [];
+      return null;
     } else {
       throw Exception('Gagal memuat data (${res.statusCode})');
     }
   }
 
-  void fetchAndSetRelaxationVideos() async {
+  void fetchAndSetRelaxationVideo() async {
     try {
-      final videos = await fetchRelaxationVideos();
+      final video = await fetchRelaxationVideo();
       if (mounted) {
         setState(() {
-          relaxationVideos = videos;
+          relaxationVideo = video;
           isLoadingRelaxation = false;
         });
       }
@@ -121,7 +128,7 @@ class _BerandaState extends State<Beranda> {
       setState(() {
         isLoadingRelaxation = false;
       });
-      debugPrint("Error memuat video/poto: $e");
+      debugPrint("Error memuat video: $e");
     }
   }
 
@@ -194,6 +201,7 @@ class _BerandaState extends State<Beranda> {
     }
   }
 
+  // ==================== UI ====================
   @override
   Widget build(BuildContext context) {
     final String tipsHariIni = dailyTips[DateTime.now().weekday % 7];
@@ -205,261 +213,70 @@ class _BerandaState extends State<Beranda> {
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(80),
-          child: Container(
-            decoration: BoxDecoration(color: AppColors.background),
-            padding: const EdgeInsets.only(top: 10.0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Text(
-                        'MaMah',
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        child: Row(
+        appBar: _buildAppBar(),
+        body: _buildBody(tipsHariIni),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(80),
+      child: Container(
+        decoration: BoxDecoration(color: AppColors.background),
+        padding: const EdgeInsets.only(top: 10.0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  const Text(
+                    'MaMah',
+                    style: TextStyle(
+                      fontSize: 30,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    child: Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  userName ?? 'Loading...',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            CircleAvatar(
-                              radius: 22,
-                              backgroundColor: Colors.grey[200],
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundImage:
-                                    (photoUrl == null || photoUrl!.isEmpty)
-                                    ? const AssetImage('images/default-pp.jpg')
-                                    : NetworkImage(photoUrl!) as ImageProvider,
+                            Text(
+                              userName ?? 'Loading...',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.white,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Selamat datang, ${userName ?? 'Ibu'}",
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
-                SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: _buildMenuCard(
-                        context,
-                        'Relaksasi',
-                        Icons.self_improvement_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RelaxasiPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildMenuCard(
-                        context,
-                        'Edukasi',
-                        Icons.menu_book_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EducationPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildMenuCard(
-                        context,
-                        'Skrining',
-                        Icons.assignment_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SkriningsPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildMenuCard(
-                        context,
-                        'Komunitas',
-                        Icons.forum_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DiskusiPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.4),
-
-                const SizedBox(height: 16),
-                _buildHealthSummaryCard(
-                  'Ringkasan Kesehatan',
-                  'Skor Skrining Terakhir: $skor',
-                  'Status: $kategori',
-                  Icons.health_and_safety,
-                  Colors.green.withOpacity(0.8),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LihatSkor(),
-                      ),
-                    );
-                  },
-                ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
-
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  'Artikel Terbaru',
-                  'Baca artikel tentang kesehatan mental pasca melahirkan',
-                  Icons.article_outlined,
-                  Colors.blue.withOpacity(0.8),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const HomePage(initialIndex: 2, role: 'ibu'),
-                      ),
-                    );
-                  },
-                ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
-
-                const SizedBox(height: 16),
-                Text(
-                  "Video Flyer",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (isLoadingRelaxation)
-                  const Center(child: CircularProgressIndicator())
-                else if (relaxationVideos.isEmpty)
-                  const Text("Belum ada video atau poto yang tersedia.")
-                else
-                  SizedBox(
-                    height: 140,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: relaxationVideos.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final video = relaxationVideos[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    EducationDetailPage(id: video.id),
-                              ),
-                            );
-                          },
-
-                          child: Container(
-                            width: 200,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black12, blurRadius: 4),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  video.mediaType == "video"
-                                      ? Icons.play_circle_fill
-                                      : Icons.image,
-                                  size: 40,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  child: Text(
-                                    video.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        const SizedBox(width: 12),
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: Colors.grey[200],
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundImage:
+                                (photoUrl == null || photoUrl!.isEmpty)
+                                ? const AssetImage(
+                                    'assets/images/default-pp.jpg',
+                                  )
+                                : NetworkImage(photoUrl!) as ImageProvider,
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -467,6 +284,187 @@ class _BerandaState extends State<Beranda> {
     );
   }
 
+  Widget _buildBody(String tipsHariIni) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Salam
+            Text(
+              "Selamat Datang, ${userName ?? 'Ibu'}",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
+
+            const SizedBox(height: 12),
+
+            // Menu Utama
+            _buildMainMenu(),
+
+            const SizedBox(height: 16),
+
+            // Judul Video (Video Flyer)
+            Text(
+              relaxationVideo?.title ?? "Video Flyer",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            _buildVideoSection(),
+
+            const SizedBox(height: 16),
+
+            // Ringkasan Kesehatan
+            _buildHealthSummaryCard(
+              'Ringkasan Kesehatan',
+              'Skor Skrining Terakhir: $skor',
+              'Status: $kategori',
+              Icons.health_and_safety,
+              Colors.teal, // hijau lembut → menandakan kesehatan
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LihatSkor()),
+                );
+              },
+            ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
+
+            const SizedBox(height: 16),
+
+            // Artikel Terbaru
+            _buildInfoCard(
+              'Artikel Terbaru',
+              'Tips kesehatan mental pasca melahirkan',
+              Icons.article_outlined,
+              Colors.indigo, // warna utama lembut & profesional
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EducationPage(),
+                  ),
+                );
+              },
+            ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== SUB-UI ====================
+  Widget _buildMainMenu() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Relaksasi',
+            Icons.self_improvement_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RelaxasiPage()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Edukasi',
+            Icons.menu_book_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => EducationPage()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Skrining',
+            Icons.assignment_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SkriningsPage()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Komunitas',
+            Icons.forum_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => DiskusiPage()),
+              );
+            },
+          ),
+        ),
+      ],
+    ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.4);
+  }
+
+  Widget _buildVideoSection() {
+    if (isLoadingRelaxation) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (relaxationVideo == null) {
+      return const Text("Belum ada video yang tersedia.");
+    } else {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: YoutubePlayer(
+                controller: YoutubePlayerController(
+                  initialVideoId: YoutubePlayer.convertUrlToId(
+                    relaxationVideo!.fileUrl ?? '',
+                  )!,
+                  flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
+                ),
+                showVideoProgressIndicator: true,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // ==================== CARD WIDGETS ====================
   Widget _buildMenuCard(
     BuildContext context,
     String title,
@@ -526,7 +524,7 @@ class _BerandaState extends State<Beranda> {
       content,
       icon,
       color,
-      action: 'Baca Selengkapnya',
+      action: 'Lihat Selengkapnya',
       onTap: onTap,
     );
   }
@@ -554,14 +552,14 @@ class _BerandaState extends State<Beranda> {
     IconData icon,
     Color color, {
     String? action,
-    VoidCallback? onTap,
+    VoidCallback? onTap, // ubah jadi nullable
   }) {
     return Material(
       elevation: 2,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        onTap: onTap, // InkWell onTap sudah menerima nullable
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -604,9 +602,15 @@ class _BerandaState extends State<Beranda> {
                 const SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Text(
-                    action,
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                  child: InkWell(
+                    onTap: onTap, // tetap aman karena nullable
+                    child: Text(
+                      action,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],

@@ -24,6 +24,7 @@ dependencies:
   flutter_inappwebview: ^6.0.0
   dropdown_search: ^6.0.2
   iconsax: ^0.0.8
+  webview_flutter: ^4.2.1
 
 dev_dependencies:
   flutter_test:
