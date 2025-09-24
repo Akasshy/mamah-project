@@ -115,19 +115,31 @@ class _BerandaState extends State<Beranda> {
     }
   }
 
-  void fetchAndSetRelaxationVideo() async {
+  Future<void> fetchAndSetRelaxationVideo() async {
     try {
-      final video = await fetchRelaxationVideo();
-      if (mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/relaxation-video'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (!mounted) return; // pastikan widget masih aktif
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         setState(() {
-          relaxationVideo = video;
+          relaxationVideo =
+              data['video']; // sesuaikan dengan format response API
           isLoadingRelaxation = false;
         });
+      } else {
+        setState(() => isLoadingRelaxation = false);
       }
     } catch (e) {
-      setState(() {
-        isLoadingRelaxation = false;
-      });
+      if (!mounted) return; // cegah crash kalau halaman sudah ditutup
+      setState(() => isLoadingRelaxation = false);
       debugPrint("Error memuat video: $e");
     }
   }

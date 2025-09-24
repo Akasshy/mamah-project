@@ -36,21 +36,9 @@ class _HomePageState extends State<HomePage> {
 
   void _initializePages() {
     if (widget.role == 'ibu') {
-      _pages = const [
-        Beranda(),
-        KonsultasiPage(),
-        ProfilePage(),
-        // SkriningsPage(),
-        // DiskusiPage(),
-      ];
+      _pages = const [Beranda(), KonsultasiPage(), ProfilePage()];
     } else if (widget.role == 'bidan') {
-      _pages = const [
-        BerandaBidan(),
-        KonsultasiPage(),
-        ProfilePage(),
-        // SkriningBidan(),
-        // DiskusiPage(),
-      ];
+      _pages = const [BerandaBidan(), KonsultasiPage(), ProfilePage()];
     } else {
       _pages = [
         Center(

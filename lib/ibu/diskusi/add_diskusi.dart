@@ -174,12 +174,12 @@ class _AddGroupPageState extends State<AddGroupPage> {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: AppColors.background,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.background,
+        backgroundColor: AppColors.background,
+        foregroundColor: Colors.white,
         elevation: 0,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),

@@ -94,68 +94,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
       final roleToSend = _selectedRole!.toLowerCase().trim();
 
-      // Jika role IBU, tampilkan dialog tanya hamil atau tidak
-      if (roleToSend == 'ibu') {
-        final bool? isPregnant = await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: const Text(
-              "Konfirmasi",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-            content: const Text(
-              "Apakah Anda sedang hamil?",
-              style: TextStyle(fontSize: 16, height: 1.5),
-            ),
-            actionsAlignment: MainAxisAlignment.spaceEvenly,
-            actions: [
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: BorderSide(color: AppColors.primaryTextColor),
-                ),
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text(
-                  "Tidak",
-                  style: TextStyle(color: Colors.black),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Ya", style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
-        );
-
-        if (isPregnant == null) return; // Dialog ditutup tanpa memilih
-
-        // Setelah tahu jawabannya, lanjut daftar
-        await _processRegister(roleToSend, isPregnant);
-      } else {
-        // Kalau bukan ibu (bidan), langsung daftar
-        await _processRegister(roleToSend, false);
-      }
+      // Tidak ada dialog lagi, langsung proses register
+      await _processRegister(roleToSend);
     }
   }
 
-  Future<void> _processRegister(String roleToSend, bool isPregnant) async {
+  Future<void> _processRegister(String roleToSend) async {
     final loadingBar = SnackBar(
       duration: const Duration(minutes: 1),
       backgroundColor: Colors.blue.shade700,
@@ -202,14 +146,14 @@ class _RegisterPageState extends State<RegisterPage> {
 
         await Future.delayed(const Duration(seconds: 2));
 
-        if (roleToSend == 'ibu' && isPregnant) {
-          // Kalau YA → ke halaman CompleteMotherPage
+        if (roleToSend == 'ibu') {
+          // Langsung ke halaman CompleteMotherPage
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const CompleteMotherPage()),
           );
         } else {
-          // Kalau bidan atau ibu yang tidak hamil → langsung ke NextRegisterPage
+          // Kalau bidan → ke NextRegisterPage
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(

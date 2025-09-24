@@ -186,7 +186,11 @@ class _DaftarPasanganPageState extends State<DaftarPasanganPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        title: Text(_role == 'bidan' ? 'Daftar Ibu' : 'Daftar Bidan'),
+        title: Text(
+          _role == 'bidan' ? 'Daftar Ibu' : 'Daftar Bidan',
+          style: TextStyle(color: Colors.white),
+        ),
+        foregroundColor: Colors.white,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

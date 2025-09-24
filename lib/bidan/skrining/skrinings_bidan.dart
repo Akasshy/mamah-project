@@ -167,19 +167,22 @@ class _SkriningBidanState extends State<SkriningBidan> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 22,
-              color: Colors.black87,
+              color: Colors.white,
             ),
           ),
           centerTitle: false,
           elevation: 0,
-          backgroundColor: Colors.white,
-          automaticallyImplyLeading: false,
+          backgroundColor: AppColors.background,
+          automaticallyImplyLeading: false, // biar kita custom tombolnya
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context); // tombol kembali
+            },
+          ),
           actions: [
             IconButton(
-              icon: const Icon(
-                Icons.refresh,
-                color: AppColors.buttonBackground,
-              ),
+              icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: () {
                 setState(() => _isLoading = true);
                 _fetchUsers();
@@ -187,6 +190,7 @@ class _SkriningBidanState extends State<SkriningBidan> {
             ),
           ],
         ),
+
         body: Column(
           children: [
             // Search Bar
