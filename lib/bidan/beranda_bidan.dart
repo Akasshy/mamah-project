@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:health_app/app_colors.dart';
 import 'package:health_app/bidan/skrining/skrinings_bidan.dart';
 import 'package:health_app/edukasi/education_page.dart';
-import 'package:health_app/homePage.dart';
+// import 'package:health_app/homePage.dart';
 import 'package:health_app/ibu/beranda/reksasipage.dart';
 import 'package:health_app/ibu/diskusi/diskusi_page.dart';
 import 'package:health_app/ip_config.dart';
@@ -14,7 +14,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
+/// Halaman utama (beranda) untuk pengguna dengan role "Bidan"
 class BerandaBidan extends StatefulWidget {
+  // ignore: use_super_parameters
   const BerandaBidan({Key? key}) : super(key: key);
 
   @override
@@ -22,24 +24,27 @@ class BerandaBidan extends StatefulWidget {
 }
 
 class _BerandaBidanState extends State<BerandaBidan> {
+  // --- Data profil pengguna
   String? userName;
   String? photoUrl;
 
+  // --- Data video relaksasi
   bool isLoadingRelaxation = true;
   Map<String, dynamic>? relaxationVideo;
 
-  // 🔥 Tambahan state untuk data rata-rata skrining
+  // --- Data rata-rata hasil skrining
   bool isLoadingAverage = true;
   Map<String, dynamic>? averageData;
 
   @override
   void initState() {
     super.initState();
-    loadUserData();
-    fetchAndSetRelaxationVideo();
-    fetchAverageScore(); // 🔥 ambil data rata-rata skrining
+    loadUserData(); // ambil data pengguna login
+    fetchAndSetRelaxationVideo(); // ambil video relaksasi dari API
+    fetchAverageScore(); // ambil data rata-rata skrining dari API
   }
 
+  /// Ambil data user dari API `/api/me`
   void loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -71,13 +76,14 @@ class _BerandaBidanState extends State<BerandaBidan> {
     }
   }
 
+  /// Ambil video relaksasi dari API `/api/flyer`
   Future<void> fetchAndSetRelaxationVideo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/relaxation-video'),
+        Uri.parse('$baseUrl/api/flyer'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -86,7 +92,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          relaxationVideo = data['video']; // pastikan format sesuai API
+          relaxationVideo = data['data']; // ✅ ambil dari field `data`
           isLoadingRelaxation = false;
         });
       } else {
@@ -99,7 +105,58 @@ class _BerandaBidanState extends State<BerandaBidan> {
     }
   }
 
-  // 🔥 Fungsi untuk ambil rata-rata skrining
+  /// Ekstrak ID video dari URL Youtube
+  String? getYoutubeId(String url) {
+    String? id = YoutubePlayer.convertUrlToId(url);
+    if (id != null) return id;
+
+    // fallback jika url berbentuk youtu.be/xxxx
+    Uri uri = Uri.parse(url);
+    if (uri.host.contains("youtu.be")) {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+    }
+    return null;
+  }
+
+  /// Bangun widget video relaksasi
+  Widget _buildVideoSection() {
+    if (isLoadingRelaxation) {
+      return const Center(child: CircularProgressIndicator());
+    } else if (relaxationVideo == null ||
+        relaxationVideo!['file_url'] == null) {
+      return const Text(
+        "Belum ada video yang tersedia.",
+        style: TextStyle(color: Colors.white, fontSize: 16),
+      );
+    } else {
+      final videoUrl = relaxationVideo!['file_url'];
+      final videoId = getYoutubeId(videoUrl ?? '');
+      if (videoId == null) {
+        return const Text("Video tidak valid.");
+      }
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+        ),
+        padding: const EdgeInsets.all(8),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: YoutubePlayer(
+            controller: YoutubePlayerController(
+              initialVideoId: videoId,
+              flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
+            ),
+            showVideoProgressIndicator: true,
+          ),
+        ),
+      ).animate().fadeIn(duration: 500.ms);
+    }
+  }
+
+  /// Ambil data rata-rata skrining dari API `/api/screening/average`
   Future<void> fetchAverageScore() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -128,48 +185,6 @@ class _BerandaBidanState extends State<BerandaBidan> {
     }
   }
 
-  Widget _buildVideoSection() {
-    if (isLoadingRelaxation) {
-      return const Center(child: CircularProgressIndicator());
-    } else if (relaxationVideo == null ||
-        relaxationVideo!['file_url'] == null) {
-      return const Text(
-        "Belum ada video yang tersedia.",
-        style: TextStyle(color: Colors.white, fontSize: 16),
-      );
-    } else {
-      final videoUrl = relaxationVideo!['file_url'];
-      final videoId = YoutubePlayer.convertUrlToId(videoUrl ?? '');
-      if (videoId == null) {
-        return const Text("Video tidak valid.");
-      }
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-        ),
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: YoutubePlayer(
-                controller: YoutubePlayerController(
-                  initialVideoId: videoId,
-                  flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
-                ),
-                showVideoProgressIndicator: true,
-              ),
-            ),
-          ],
-        ),
-      ).animate().fadeIn(duration: 500.ms);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -181,71 +196,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
         backgroundColor: AppColors.background,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(80),
-          child: Container(
-            decoration: BoxDecoration(color: AppColors.background),
-            padding: const EdgeInsets.only(top: 10.0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'MaMah',
-                        style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfilePage(),
-                            ),
-                          ).then((_) => loadUserData());
-                        },
-                        child: Row(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  userName ?? 'Loading...',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            CircleAvatar(
-                              radius: 22,
-                              backgroundColor: Colors.grey[200],
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundImage:
-                                    (photoUrl == null || photoUrl!.isEmpty)
-                                    ? const AssetImage('images/default-pp.jpg')
-                                    : NetworkImage(photoUrl!) as ImageProvider,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          child: _buildAppBar(),
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -253,8 +204,9 @@ class _BerandaBidanState extends State<BerandaBidan> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // --- Sambutan
                 Text(
-                  "Selamat Datang, ${userName ?? 'Ibu'}",
+                  "Selamat Datang, ${userName ?? 'Bidan'}",
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -262,81 +214,18 @@ class _BerandaBidanState extends State<BerandaBidan> {
                   ),
                 ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
                 const SizedBox(height: 12),
+
+                // --- Menu shortcut
+                _buildMenuRow(),
+
+                const SizedBox(height: 16),
+
+                // --- Video relaksasi
                 _buildVideoSection(),
 
                 const SizedBox(height: 16),
 
-                SizedBox(
-                  height: 100,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      _buildMenuCard(
-                        context,
-                        'Relaksasi',
-                        Icons.self_improvement_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RelaxasiPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
-                        context,
-                        'Edukasi',
-                        Icons.menu_book_outlined,
-                        Colors.blue,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EducationPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
-                        context,
-                        'Skrining',
-                        Icons.assignment_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SkriningBidan(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _buildMenuCard(
-                        context,
-                        'Komunitas',
-                        Icons.forum_outlined,
-                        AppColors.primary,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DiskusiPage(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 🔥 Card dengan data API
+                // --- Card rata-rata skrining
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -351,7 +240,6 @@ class _BerandaBidanState extends State<BerandaBidan> {
                     content: isLoadingAverage
                         ? "Memuat..."
                         : "Total Ibu: ${averageData?['total_mothers'] ?? '-'}\n"
-                              "Rata-rata: ${averageData?['average_score'] ?? '-'}\n"
                               "Kategori: ${averageData?['category'] ?? '-'}",
                     icon: Icons.assignment_turned_in,
                     color: Colors.blue.shade300,
@@ -362,6 +250,141 @@ class _BerandaBidanState extends State<BerandaBidan> {
           ),
         ),
       ),
+    );
+  }
+
+  /// AppBar custom
+  Widget _buildAppBar() {
+    return Container(
+      decoration: BoxDecoration(color: AppColors.background),
+      padding: const EdgeInsets.only(top: 10.0),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Text(
+                  'MaMah',
+                  style: TextStyle(
+                    fontSize: 30,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ProfilePage()),
+                    ).then((_) => loadUserData());
+                  },
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            userName ?? 'Loading...',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: Colors.grey[200],
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundImage:
+                              (photoUrl == null || photoUrl!.isEmpty)
+                              ? const AssetImage('images/default-pp.jpg')
+                              : NetworkImage(photoUrl!) as ImageProvider,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Deretan menu utama (Relaksasi, Edukasi, Skrining, Komunitas)
+  Widget _buildMenuRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Relaksasi',
+            Icons.self_improvement_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RelaxasiPage()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Edukasi',
+            Icons.menu_book_outlined,
+            Colors.blue,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => EducationPage()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Skrining',
+            Icons.assignment_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SkriningBidan()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildMenuCard(
+            context,
+            'Komunitas',
+            Icons.forum_outlined,
+            AppColors.primary,
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => DiskusiPage()),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -379,7 +402,6 @@ class _BerandaBidanState extends State<BerandaBidan> {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Container(
-          width: 94,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -391,10 +413,11 @@ class _BerandaBidanState extends State<BerandaBidan> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
+                  // ignore: deprecated_member_use
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 20, color: color),
+                child: Icon(icon, size: 24, color: color),
               ),
               const SizedBox(height: 6),
               Text(
@@ -412,6 +435,7 @@ class _BerandaBidanState extends State<BerandaBidan> {
     );
   }
 
+  /// Template kartu informasi (contoh: rata-rata skrining)
   Widget _buildCardTemplate({
     required String title,
     required String content,

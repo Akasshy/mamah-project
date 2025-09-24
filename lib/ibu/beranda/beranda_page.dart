@@ -121,17 +121,18 @@ class _BerandaState extends State<Beranda> {
       final token = prefs.getString('token');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/relaxation-video'),
+        Uri.parse('$baseUrl/api/flyer'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (!mounted) return; // pastikan widget masih aktif
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final jsonData = jsonDecode(response.body);
+        final videoData = jsonData['data'];
+
         setState(() {
-          relaxationVideo =
-              data['video']; // sesuaikan dengan format response API
+          relaxationVideo = RelaxationVideo.fromJson(videoData);
           isLoadingRelaxation = false;
         });
       } else {
@@ -297,78 +298,72 @@ class _BerandaState extends State<Beranda> {
   }
 
   Widget _buildBody(String tipsHariIni) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Salam
-            Text(
-              "Selamat Datang, ${userName ?? 'Ibu'}",
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
-
-            const SizedBox(height: 12),
-
-            // Menu Utama
-            _buildMainMenu(),
-
-            const SizedBox(height: 16),
-
-            // Judul Video (Video Flyer)
-            Text(
-              relaxationVideo?.title ?? "Video Flyer",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Salam
+          Text(
+            "Selamat Datang, ${userName ?? 'Ibu'}",
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            const SizedBox(height: 8),
+          ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
 
-            _buildVideoSection(),
+          const SizedBox(height: 12),
 
-            const SizedBox(height: 16),
+          // Menu Utama
+          _buildMainMenu(),
 
-            // Ringkasan Kesehatan
-            _buildHealthSummaryCard(
-              'Ringkasan Kesehatan',
-              'Skor Skrining Terakhir: $skor',
-              'Status: $kategori',
-              Icons.health_and_safety,
-              Colors.teal, // hijau lembut → menandakan kesehatan
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LihatSkor()),
-                );
-              },
-            ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
+          const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
+          _buildVideoSection(),
 
-            // Artikel Terbaru
-            _buildInfoCard(
-              'Artikel Terbaru',
-              'Tips kesehatan mental pasca melahirkan',
-              Icons.article_outlined,
-              Colors.indigo, // warna utama lembut & profesional
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EducationPage(),
-                  ),
-                );
-              },
-            ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
-          ],
-        ),
+          const SizedBox(height: 16),
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHealthSummaryCard(
+                    'Skrining Terakhir',
+                    'Skor: $skor | Kategori: $kategori',
+                    '',
+                    Icons.health_and_safety,
+                    Colors.teal,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LihatSkor(),
+                        ),
+                      );
+                    },
+                  ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.4),
+                  const SizedBox(height: 12),
+                  _buildInfoCard(
+                    'Artikel Terbaru',
+                    'Tips kesehatan mental pasca melahirkan',
+                    Icons.article_outlined,
+                    Colors.indigo,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EducationPage(),
+                        ),
+                      );
+                    },
+                  ).animate().fadeIn(duration: 1000.ms).slideY(begin: 0.5),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }

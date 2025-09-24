@@ -164,7 +164,7 @@ class _EducationPageState extends State<EducationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Artikel Pilihan',
           style: TextStyle(
             fontSize: 18,
@@ -210,6 +210,7 @@ class _EducationPageState extends State<EducationPage> {
                 ),
               );
             }
+
             return GestureDetector(
               onTap: () {
                 Navigator.push(
@@ -219,80 +220,80 @@ class _EducationPageState extends State<EducationPage> {
                   ),
                 );
               },
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
+              child: Card(
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
+                elevation: 3,
+                clipBehavior: Clip.hardEdge,
                 child: Stack(
                   children: [
-                    // Background with gradient overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: AppColors.primary.withOpacity(0.1),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          latest.mediaType == 'image'
-                              ? Icons.image
-                              : Icons.play_circle_fill,
-                          size: 64,
-                          color: AppColors.primary,
+                    // Background gambar (kalau ada fileUrl image)
+                    if (latest.mediaType == 'image' &&
+                        latest.fileUrl.isNotEmpty)
+                      Ink.image(
+                        image: NetworkImage(latest.fileUrl),
+                        fit: BoxFit.cover,
+                        height: 200,
+                        width: double.infinity,
+                      )
+                    else
+                      Container(
+                        height: 200,
+                        color: AppColors.inputFill,
+                        child: Center(
+                          child: Icon(
+                            latest.mediaType == 'video'
+                                ? Icons.play_circle_fill
+                                : Icons.article,
+                            size: 64,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
-                    ),
-                    // Gradient overlay
+
+                    // Overlay gradient
                     Container(
+                      height: 200,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
                         gradient: LinearGradient(
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: [
-                            Colors.black.withOpacity(0.6),
+                            Colors.black.withOpacity(0.7),
                             Colors.transparent,
                           ],
                         ),
                       ),
                     ),
-                    // Content
+
+                    // Teks judul + tanggal
                     Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              latest.title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                      bottom: 16,
+                      left: 16,
+                      right: 16,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            latest.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Terbit: ${latest.createdAt}',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 12,
-                              ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Terbit: ${latest.createdAt}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
